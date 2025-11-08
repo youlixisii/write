@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script>
+    class eventEmit{
+        constructor(){
+            this.events={}
+            //是一个对象，key是event事件，value是回调数组
+        }
+        //订阅事件
+        on(event,callback){
+            //回调数组
+            // 访问对象的key-value，没有的话创建空数组
+            const callbacks=this.events[event] || []
+            if(Array.isArray(callbacks)){
+                callbacks.push(callback)
+                this.events[event]=callbacks
+            }
+            return this //方便链式调用
+        }
+
+        //执行回调，没有增删改操作
+        emit(event){
+            const callbacks=this.events[event] || []
+            if(Array.isArray(callbacks)){
+                //确保cb是函数后，依次执行
+                //&& 是 逻辑与，特点：
+                // 左边是 false → 整个表达式直接返回 false，右边不执行
+                // 左边是 true → 执行右边的表达式，然后返回右边的结果
+                callbacks.forEach(cb=>typeof cb ==='function' && cb())
+            }
+            return this
+        }
+
+        //取消订阅某个事件的某个回调
+        off(event,callback){
+            //取消订阅，保留不符合callback的内容，filter里的内容是留下的内容
+            const callbacks=(this.events[event] || []).filter(cb=>cb!==callback)
+            this.events[event]=callbacks
+            return this
+        }
+    }
+
+    //示例
+    const emit = new eventEmit()
+    emit.on('click', () => {
+        console.log('click1');
+    })
+    emit.on('click', () => {
+        console.log('click2');
+    })
+    emit.emit('click') //触发事件
+</script>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script>
+    (() => {
+    /**
+     * 用generator promise 实现 async await
+     */
+        //这是一个箭头函数 getData，
+        //调用后返回一个 Promise 对象，模拟异步请求
+    const getData = () => new Promise(resolve => setTimeout(() => resolve("data"), 1000))
+
+
+    function* testG() {
+        // await被编译成了yield
+        console.log('start')
+        const data = yield getData()
+        console.log('data: ', data);
+        const data2 = yield getData()
+        console.log('data2: ', data2);
+        return 'success'
+      }
+      
+    //generatorFunc是一个generator对象
+    function asyncToGenerator(generatorFunc) {
+        // 接收一个「生成器函数」，返回一个能自动执行这个生成器并返回 Promise 的函数。
+        // 换句话说，
+        // 它把一个普通的 generator 函数「包装」成一个能自动运行的 async 函数。
+        
+        return function() {
+            //得到 generator 对象
+            //Generator 函数本身和普通函数不同：
+            //调用 generator 函数 不会立即执行函数体
+            //会返回一个 Generator 对象（也叫 iterator 对象）
+            //gen 拥有两个核心方法：
+            //next(value) → 继续执行到下一个 yield
+            //throw(err) → 抛入错误给 generator
+            const gen = generatorFunc.apply(this, arguments)
+            return new Promise((resolve, reject) => {
+                //key 是 "next" 或 "throw"
+                // arg 是你想传回 generator 的值（相当于 yield 表达式的返回值）
+                function step(key, arg) {
+                let generatorResult
+                try {
+                    //等价于gen.next(arg)或gen.throw(arg)
+                    generatorResult = gen[key](arg)
+                    //key 是 "next" 或 "throw"
+                    // "next"：把 arg 当作 yield 表达式的返回值传回 generator
+                    // "throw"：把错误传回 generator，让它可以捕获
+                    // 返回值 generatorResult 是一个对象：{ value: any, done: boolean }
+                    // value → yield 返回的值（这里通常是 Promise）
+                    // done → generator 是否已经执行完
+                } catch (error) {
+                    return reject(error)
+                }
+                const { value, done } = generatorResult
+                //判断是否完成
+                if (done) {
+                    return resolve(value)
+                } else {
+                    //处理未完成的 yield
+                    //把 yield 的值 Promise 化，等它完成后继续调用 step（递归）
+                    return Promise.resolve(value).then(
+                        //这里 val 就会作为 yield 表达式的返回值赋给 data
+                        val => step('next', val), 
+                        err => step('throw', err))
+                }
+                }
+                //我们启动 generator
+                // generator 刚开始执行，还没有任何 yield
+                step("next")
+            })
+            }
+    }
+    
+   var a = asyncToGenerator(testG)
+   a().then((res) => {
+       console.log(res)
+    })
+      
+})()
+</script>
+</html>

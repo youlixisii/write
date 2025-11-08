@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script>
+    let input = [
+        {
+          id: 1,
+          val: "学校",
+          parentId: null,
+        },
+        {
+          id: 2,
+          val: "班级1",
+          parentId: 1,
+        },
+        {
+          id: 3,
+          val: "班级2",
+          parentId: 1,
+        },
+        {
+          id: 4,
+          val: "学生1",
+          parentId: 2,
+        },
+        {
+          id: 5,
+          val: "学生2",
+          parentId: 3,
+        },
+        {
+          id: 6,
+          val: "学生3",
+          parentId: 3,
+        },
+      ];
+
+      function arrayTotree(input,parentId){
+        const children=[]
+        buildTree(input,parentId,children)
+        return children.length>0 ? (children.length>1 ? children :children[0]) : {}
+      }
+
+      function buildTree(arr,parentId,children){
+        arr.forEach(item => {
+            if(item.parentId===parentId){
+                item.children=[]
+                buildTree(arr,item.id,item.children)
+                children.push(item) //把这个节点加入children数组中
+            }
+        });
+      }
+
+      console.log(arrayTotree(input,null));
+      
+</script>
+</html>

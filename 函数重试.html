@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+</body>
+<script>
+    // 定义一个失败的promise，返回一个失败的promise
+    function foo(params){
+        return new Promise((resolve,reject)=>{
+            setTimeout(() => {
+                console.log('value');
+                reject('error') //变为失败
+            }, 1000);
+        })
+
+    }
+
+    // 函数重试的函数
+    function autoRetry(fn,times){
+        let t=times //防止污染外部参数
+        // 返回一个新函数
+        return function Antry(...args){
+            return new Promise((resolve,reject)=>{
+                let retry=()=>{
+                    // 如果失败，在catch里面重新执行
+                    fn(...args).then(resolve).catch(err=>{
+                        t--
+                        // 如果还没有执行完次数，则重试
+                        if(t>0) retry()
+                        else reject(err)
+                    })
+                }
+                retry()
+            })
+        }
+
+    }
+    // 
+    var retry=autoRetry(foo,3)
+    retry({a:123})
+    .then(res=>{console.log('success:',res);})
+    .catch(err=>{console.log('fail:',err);})
+
+</script>
+</html>

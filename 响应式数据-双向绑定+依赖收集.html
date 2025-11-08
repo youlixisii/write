@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script>
+function createReactive(obj, callback) {
+    // 存储所有依赖
+    const deps = new Map();
+  
+    // 创建代理
+    return new Proxy(obj, {
+      get(target, key) {
+        // 简单依赖收集 - 记录访问过的属性
+        if (!deps.has(key)) {
+          deps.set(key, new Set());
+        }
+        deps.get(key).add(callback);
+        
+        return target[key];
+      },
+      set(target, key, value) {
+        target[key] = value;
+        
+        // 异步触发回调 (使用Promise实现微任务)
+        Promise.resolve().then(() => {
+          if (deps.get(key)) {
+            deps.get(key).forEach(fn => fn());
+          }
+        });
+        
+        return true;
+      }
+    });
+  }
+  
+  // 使用示例
+  const data = { count: 0 };
+  
+  // 创建响应式对象
+  const reactiveData = createReactive(data, () => {
+    console.log('数据变了:', reactiveData.count);
+  });
+  
+  // 测试
+//   reactiveData.count++;  // 输出 "数据变了: 1"
+  console.log(reactiveData.count);
+//   reactiveData.count = 5; // 输出 "数据变了: 5"
+  
+  // 异步批量更新演示
+  reactiveData.count = 10;
+  reactiveData.count = 20;
+  // 只会输出一次 "数据变了: 20"
+</script>
+</html>

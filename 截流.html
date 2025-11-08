@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script>
+    // setTimeout有问题
+    function throttle(fn,wait=0){
+        let timeId
+        return function(...args){
+            //此时已有定时器，直接无视
+            if(timeId!==undefined) return 
+            const _this=this
+            timeId=setTimeout(()=>{
+                fn.apply(_this,args)
+                timeId=undefined //执行完后清除定时器
+            },wait)
+        }
+    }
+
+    function log() {
+    console.log('触发于', new Date().toLocaleTimeString());
+}
+
+    let throttledLog = throttle(log, 2000);
+
+    throttledLog();
+    throttledLog();
+    throttledLog();
+    // 即使调用三次，也只会打印一次（间隔 2 秒后可再次打印）
+
+    const obj = {
+    name: "sy",
+    say(message) {
+        console.log(this.name + " says: " + message);
+    }
+};
+
+const throttledSay = throttle(obj.say, 1000);
+
+throttledSay.call(obj, "hi~");
+throttledSay.call(obj, "hello!");
+// 只会输出一次："sy says: hi~"
+
+
+</script>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        //函数参数，默认给一个空对象
+        //简略版
+        function deepclone11(obj={}){
+            //如果不是对象，则直接return
+            if(obj===null || typeof obj !== 'object') return obj
+
+            //建立空对象
+            let result={}
+            //数组则建立空数组
+            if(Array.isArray(obj)) result=[]
+            //循环遍历obj里面的key，for...in配合hasownproperty，递归调用deepclone
+            for(let key in obj){
+                if(obj.hasOwnProperty(key)){
+                    result[key]=deepclone(obj[key])
+                }
+            }
+            return result
+
+        }
+
+        // const obj1={a:{b:{c:1,d:2}},e:{}}
+        // const obj2=deepclone(obj1)
+        // obj2.a.b=1
+        // console.log(obj1);
+
+        // hash的key是obj，value是克隆后的obj
+        function deepclone(obj,hash=new WeakMap()){
+            //基本数据类型和null，返回原obj
+            if(obj===null || typeof obj !== 'object' ){
+                return obj
+            }
+            //Date对象，gettime返回一个新的date
+            if(obj instanceof Date){
+                return new Date(obj.getTime())
+            }
+            //如果是正则表达式，返回一个新的对象
+            if(obj instanceof RegExp){
+                return new RegExp(obj)
+            }
+            //处理循环引用：如果hash里已经有obj，则返回这个value（已经被克隆过）
+            if(hash.has(obj)){
+                return hash.get(obj)
+            }
+            //如果是数组，新建空数组对象，添加到hash，foreach递归克隆
+            if(Array.isArray(obj)){
+                const cloneArray=new Array()
+                hash.set(obj,cloneArray)
+                obj.forEach((item,index)=>{
+                    cloneArray[index]=deepclone(item,hash)
+                })
+                return cloneArray
+            }
+            //如果是Map，新建map对象，添加到hash，foreach递归遍历，key和value分别克隆
+            if(obj instanceof Map){
+                const cloneMap=new Map()
+                hash.set(obj,cloneMap)
+                obj.forEach((value,key)=>{
+                    cloneMap.set(deepclone(key,hash),deepclone(value,hash))
+                })
+                return cloneMap
+            }
+            //如果是set，新建set对象，添加到hash，foreach递归遍历克隆
+            if(obj instanceof Set){
+                const cloneSet=new Set()
+                hash.set(obj.cloneSet)
+                obj.forEach((value)=>{
+                    cloneSet.add(deepclone(value,hash))
+                })
+                return cloneSet
+            }
+            //如果是普通对象，create指定原型链，添加到hash
+            const cloneObj=Object.create(obj.__proto__)
+            hash.set(obj,cloneObj)
+            //拿到对象的所有自有属性（字符串+Symbol+可枚举+不可枚举），
+            // 用到getOwnPropertyNames和getOwnPropertySymbols，展开运算符合并
+            const allKeys=[...Object.getOwnPropertyNames(obj),
+                ...Object.getOwnPropertySymbols(obj)
+            ]
+            //克隆上一步。
+            allKeys.forEach(key=>{
+                // 先拿到属性的完整定义信息descriptor，用getOwnPropertyDescriptor
+                const descriptor=Object.getOwnPropertyDescriptors(obj,key)
+                // 如果是访问器属性get/set，则用Object.defineProperty（三个参数，分别是cloneobj，key，descriptor）
+                if(descriptor.get || descriptor.set){
+                    Object.defineProperty(cloneObj,key,descriptor)
+                }else{
+                    cloneObj[key]=deepclone(obj[key],hash)
+                }
+            })
+            return cloneObj
+        }
+
+        
+    </script>
+</body>
+</html>

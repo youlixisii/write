@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+
+    <script>
+        //sum(1)(2)  sum(1)必须返回一个函数，才可以继续调用
+        function sum(a){
+            return function(b){
+                return a+b
+            }
+        }
+
+        //存储已经接收的参数
+        let nums=[]
+        function sum2(...args){
+            nums.push(...args)
+            if(nums.length>=5){
+                //累加
+                const res=nums.slice(0,5).reduce((p,v)=>p+v,0)
+                nums=[]
+                return res
+            }else{
+                //返回一个函数接受剩余参数
+                return sum2
+            }
+
+        }
+        
+
+        // const curry=(fn)=>{
+        //     // 总共几个参数？
+        //     const arity=fn.length
+
+        //     //return一个函数，接收剩余参数
+        //     return function curried(...args){
+        //         // 达到参数要求，则执行fn
+        //         //args是一个数组
+        //         if(args.length>=arity){
+        //             return fn.apply(this,args)
+        //         }
+        //         else{
+        //             //继续接受参数，把已经接受到的args和新的newArgs拼起来
+        //             return (...newArgs)=>{
+        //                 curried.apply(this,args.concat(newArgs))
+        //             }
+        //         }
+        //     }
+        // }
+
+
+        function curry(fn){
+            const arity=fn.length
+            return function curried(...args){
+                if(args.length>=arity){
+                    //执行函数
+                    return fn(...args)
+                }else{
+                    //继续接受参数
+                    return (...newArgs)=>{
+                        return curried(...args,...newArgs)
+                    }
+                }
+            }
+        }
+
+        const add = (a, b, c) => a + b + c;
+        const curriedAdd = curry(add);
+
+        console.log(curriedAdd(1)(2)(3)); // 6
+        console.log(curriedAdd(1, 2)(3)); // 6
+        console.log(curriedAdd(1)(2, 3)); // 6
+
+        
+    </script>
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script>
+    // 所有成功才返回结果数组，只要有一个失败立即reject
+    ;(()=>{
+        // 重新定义了promise.all
+        // iterator是一个数组，装一个个promise/普通值
+        Promise.all=function (iterator){
+            // 成功的个数
+            let success=0
+            // 需要执行的个数
+            let len=iterator.length
+            let res=[]  //存放结果
+
+            return new Promise((resolve,reject)=>{
+                // 用for..in的目的是拿到索引，for..of是拿value
+                for(let i in iterator){
+                    // 先变成promise
+                    Promise.resolve(iterator[i]) //iterator[i]成功传给then，失败传给catch
+                    .then((data)=>{
+                        res[i]=data
+                        if(++success===len) resolve(res)
+                    })
+                    .catch(e=>reject(e)) //把错误值传给catch
+                }
+            })
+        }
+    })()
+    Promise.all([
+  Promise.resolve(1),
+  Promise.resolve(2),
+  Promise.reject(3)
+]).then(res => console.log(res))
+.catch(e=>console.log('捕获错误:', e))
+
+</script>
+</html>

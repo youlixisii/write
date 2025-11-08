@@ -1,0 +1,31 @@
+<!-- const arr = [1,2,3,1,"a", "a", "b", 3] => [1,2,3,"a", "b"]
+给定一个数组，包含重复的字符串和数字，写一个方法，使得字符串和数字不重复 -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script>
+        function unique(arr){
+            for(let i=0;i<arr.length;i++){
+                for(let j=i+1;j<arr.length;j++){
+                    if(arr[i]===arr[j]){
+                        arr.splice(j,1)
+                        j--
+                    }
+                }
+            }
+            return arr
+        }
+
+        const arr=[1,2,3,1,"a", "a", "b", 3]
+        const arr1=[...new Set(arr)]
+        console.log('ES6:',arr1);
+        console.log('ES5:',unique(arr));
+
+    </script>
+</body>
+</html>

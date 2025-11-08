@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script>
+    // light逻辑：延迟执行fn，直接成功
+    function light(fn,time){
+        return new Promise(resolve=>{
+            setTimeout(()=>{
+                fn()
+                resolve('成功')
+            },time)
+        })
+    }
+
+    function red(){
+        console.log('red');
+    }
+    function green(){
+        console.log('green');
+    }
+    function yellow(){
+        console.log('yellow');
+    }
+
+    // 要亮灯几轮
+    function start(times){
+        var times=times
+        if(times===0){
+            console.log('end');
+            return
+        }
+        times--
+        Promise.resolve().then(()=>light(green,3000)).then(()=>light(red,2000))
+        .then(()=>light(yellow,1000)).then(()=>start(times))
+    }
+    start(2)
+</script>
+</html>

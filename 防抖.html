@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script>
+    function debounce(fn,wait){
+        let timeId=0
+        return function(...args){
+            let _this=this
+            clearTimeout(timeId)
+            timeId=setTimeout(()=>{
+                fn.apply(_this,args)
+            },wait)
+        }
+    }
+    function sum(a, b) {
+    console.log(a + b, new Date().toLocaleTimeString());
+}
+
+    let debounceSum = debounce(sum, 500);
+
+    debounceSum(2, 3);
+    debounceSum(5, 7);  // 0.5秒后只打印 12
+
+</script>
+</html>
