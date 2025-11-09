@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <!-- 输入：一个数target，一个数组nums
+        条件：满足和大于=target，最短的子数组
+        返回：最短长度，不存在则返回0
+        滑动窗口：start和end（下一个要加的数的下标），循环条件为 start<nums.length
+
+        两种情况：当前sum<target且end<nums.length，则把end加进去，end++，
+            否则（sum到达目标或end到头）：
+                如果：sum>=target，则全局比较min和当前长度end-start，取小值
+                （不管sum到没到都会执行）把start的数剔除sum，start往右移一位
+        -->
+</body>
+<script>
+    const minLengthArr=(target,nums)=>{
+        let min=Infinity
+        let sum=0
+        let start=0
+        let end=0
+
+        while(start<nums.length){
+            if(sum<target && end<nums.length){
+                sum+=nums[end]
+                end++
+            }else{
+                if(sum>=target){
+                    min=Math.min(min,end-start)
+                }
+                sum=sum-nums[start]
+                start++
+            }
+        }
+        return min===Infinity?0:min
+
+    }
+
+    var arr = [2,3,1,2,4,3,2,1]
+    var s = 7
+    console.log(minLengthArr(s, arr))
+</script>
+</html>

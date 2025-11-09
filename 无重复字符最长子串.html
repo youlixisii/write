@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <!-- 输入：一个字符串s
+        返回：不含有重复字符的最长子串的长度maxLen
+        用set/map储存当前窗口
+        滑动窗口：left和right（for）
+            for遍历：while（set中含有s[right]相同的值，说明有重复），则删掉left的值，left++
+            删除完毕后加上s[right]，全局对比最长长度maxLen和当前长度，取大值
+        -->
+</body>
+<script>
+    const lengthOfLongestSubstring=(s)=>{
+        let left=0
+        let maxLen=0
+        let set=new Set()
+
+        for(let right=0;right<s.length;right++){
+            while(set.has(s[right])){
+                set.delete(s[left])
+                left++
+            }
+            set.add(s[right]) //add右边的数字
+            maxLen=Math.max(maxLen,right-left+1)
+        }
+        return maxLen
+    }
+
+    console.log(lengthOfLongestSubstring('afapwdkk'))
+    
+</script>
+</html>
