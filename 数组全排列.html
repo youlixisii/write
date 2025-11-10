@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <!-- 生成数组 nums 的所有唯一排列，输出所有不重复的排列组合
+
+        先sort
+        used标记用没用过
+        回溯：到达末端就push，return
+            for循环遍历这个nums，剪枝条件去重continue
+            做选择（true、加path）、递归、撤销选择（false、path pop）
+        -->
+</body>
+<script>
+    function permuteUnique(nums) {
+    const result = [];
+    nums.sort((a, b) => a - b); // 排序，将重复的数字放在相邻位置，方便后续做剪枝，避免生成重复排列
+    const used = new Array(nums.length).fill(false); 
+    // 用于记录某个元素是否在当前排列 path 中已经被使用，避免重复选择
+    
+    function backtrack(path) {
+        if (path.length === nums.length) {
+            result.push([...path]); // 到达末端，存储当前排列
+            return;
+        }
+        
+        for (let i = 0; i < nums.length; i++) {
+            // 剪枝条件，避免重复排列
+            //used[i] → 当前数字已经在 path 中用了，不能重复使用
+            //(i > 0 && nums[i] === nums[i - 1] && !used[i - 1]) → 去重逻辑：
+            // 当 nums[i] 与前一个数字相同，并且前一个数字还没被使用，就跳过。
+            // 原因：如果先选择后出现的重复数字，会导致生成重复排列。
+            if (used[i] || (i > 0 && nums[i] === nums[i - 1] && !used[i - 1])) {
+                continue;
+            }
+            //当前元素和前一个元素一样
+            // 前一个元素还没在当前路径中被用
+            // → 跳过当前元素，先选前一个，再选当前
+            
+            // 做选择
+            used[i] = true;
+            path.push(nums[i]);
+            
+            // 递归
+            backtrack(path);
+            
+            // 撤销选择
+            path.pop(); //注意不需要参数
+            used[i] = false;
+        }
+    }
+    
+    backtrack([]);
+    return result;
+    }
+
+    console.log(permuteUnique([1,1,2]));
+
+</script>
+</html>
