@@ -6,9 +6,35 @@
     <title>Document</title>
 </head>
 <body>
-    
+    <!-- 
+        暴力递归法
+        最优解法是用动态规划，有个状态转移方程，但不好理解
+        复杂度：指数级，O(2^(m+n))，非常慢 
+            递归终止条件：到末尾
+            当前字符相同就返回当前+递归
+            else不同，有两个option，选长的那个
+        -->
 </body>
 <script>
-    
+    function lcsBruteForce(text1, text2, i = 0, j = 0) {
+        // 1️⃣ 递归终止条件
+        if (i === text1.length || j === text2.length) return '';
+        
+        // 2️⃣ 当前字符相同，说明属于公共子序列的一部分
+        if (text1[i] === text2[j]) {
+            //把它加进结果中，再去找后面的公共部分
+            return text1[i] + lcsBruteForce(text1, text2, i + 1, j + 1);
+        } else {
+            // 3️⃣ 当前字符不同 -> 两种选择
+            const option1 = lcsBruteForce(text1, text2, i + 1, j); //跳过 text1[i]，看看 (i+1, j) 会不会更好
+            const option2 = lcsBruteForce(text1, text2, i, j + 1); //跳过 text2[j]，看看 (i, j+1) 会不会更好
+            // 3️⃣ 当前字符不同 -> 两种选择
+            //返回更长的那一个结果，注意比较的是长度
+            return option1.length > option2.length ? option1 : option2;
+        }
+    }
+
+    console.log(lcsBruteForce('1A2C3D4B56', 'B1D23A456A'))
+
 </script>
 </html>

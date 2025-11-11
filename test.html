@@ -9,37 +9,22 @@
     
 </body>
 <script>
-    function permuteUnique(nums){
-        let result=[]
-        let used=new Array(nums.length).fill(false)
+    function lcsBruteForce(text1,text2,i=0,j=0){
+        if(i===text1.length || j===text2.length) return ''
 
-        function backtrack(path){
-            if(path.length===nums.length){
-                result.push([...path])
-                return
+        if(text1[i]===text2[j]){
+            return text1[i]+lcsBruteForce(text1,text2,i+1,j+1)
 
-            }
+        }else{
+            const option1=lcsBruteForce(text1,text2,i+1,j)
+            const option2=lcsBruteForce(text1,text2,i,j+1)
 
-            for(let i=0;i<nums.length;i++){
-                if(used[i] || (i>0 && nums[i]===nums[i-1] && !used[i-1])){
-                    continue
-                }
 
-                path.push(nums[i])
-                used[i]=true
-
-                backtrack(path)
-
-                used[i]=false
-                path.pop()
-            }
-
+            return option1.length>option2.length?option1:option2
         }
-
-        backtrack([])
-        return result
     }
-    console.log(permuteUnique([1,1,2]));
+
+    console.log(lcsBruteForce('1A2C3D4B56', 'B1D23A456A'))
 
 
 </script>
