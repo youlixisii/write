@@ -9,23 +9,7 @@
     
 </body>
 <script>
-    function lcsBruteForce(text1,text2,i=0,j=0){
-        if(i===text1.length || j===text2.length) return ''
-
-        if(text1[i]===text2[j]){
-            return text1[i]+lcsBruteForce(text1,text2,i+1,j+1)
-
-        }else{
-            const option1=lcsBruteForce(text1,text2,i+1,j)
-            const option2=lcsBruteForce(text1,text2,i,j+1)
-
-
-            return option1.length>option2.length?option1:option2
-        }
-    }
-
-    console.log(lcsBruteForce('1A2C3D4B56', 'B1D23A456A'))
-
+    
 
 </script>
 </html>

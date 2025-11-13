@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <!-- start(),返回一个promise，调用runTask
+            开始执行，或从暂停恢复
+            isRunning，返回正在运行；ispause，则开始执行（调runTask），改ispause和isrunning，
+            首次启动，初始化，00，isRunning=true，isPause=false，resolveALL和rejectAll，然后runTask
+        pause
+            如果没有在isrunning，暂停不了；如果已经ispause，返回已经暂停； 剩下的就是直接暂停
+        getStatus
+            直接return 对象{总共的任务数，当前执行到的任务数，已完成的任务数，失败的任务数，isRunning，isPaused，结果数组}
+        executeTask(index)，因为是执行单个任务所以要传一个index
+            执行单个任务（await tasks[index]()）并记录结果：存到results[index]里，分成功和失败状态，失败状态就throw error
+
+        runTask(),async函数，调用executeTask。
+            负责执行整个任务队列，while(currentIndx<tasks.length)，每次都看是否pause，是的话就return，
+            try catch执行executeTask(currentIndex)，记得cuindex要++，catch部分就是失败（error.message），isrunning改为false，执行rejectAll后return
+            整体while完毕后isrunning=false，执行resolveAll
+        -->
+</body>
+<script>
+    /**
+ * 任务处理器 - 顺序执行异步任务，支持暂停和恢复
+ * @param {Array<Function>} tasks - 任务列表，每个任务是一个返回 Promise 的异步函数
+ * @returns {Object} 返回包含 start 和 pause 方法的对象
+ */
+
+function processTasks(tasks) {
+    let currentIndex = 0;           // 当前执行到的任务索引
+    let isPaused = false;           // 是否暂停
+    let isRunning = false;          // 是否正在运行
+    const results = [];             // 存储每个任务的执行结果
+    let resolveAll = null;          // 用于 resolve 所有任务完成的 Promise
+    let rejectAll = null;           // 用于 reject 任务执行失败的 Promise
+    
+    /**
+     * 执行单个任务
+     * @param {number} index - 任务索引
+     */
+    const executeTask = async (index) => {
+        try {
+            console.log(` 开始执行任务 ${index + 1}/${tasks.length}`);
+            const startTime = Date.now();
+            
+            // 执行任务（任务具有原子性，不可中断）
+            const result = await tasks[index]();
+            
+            const duration = Date.now() - startTime;
+            console.log(`任务 ${index + 1} 完成，耗时 ${duration}ms`);
+            
+            // 存储结果
+            results[index] = {
+                index,
+                success: true,
+                result,
+                duration
+            };
+            
+            return result;
+        } catch (error) {
+            console.error(`任务 ${index + 1} 失败:`, error.message);
+            
+            // 存储错误信息
+            results[index] = {
+                index,
+                success: false,
+                error: error.message,
+                duration: 0
+            };
+            
+            throw error;
+        }
+    };
+    
+    /**
+     * 执行任务队列
+     */
+    const runTasks = async () => {
+        while (currentIndex < tasks.length) {
+            // 检查是否暂停（在两个任务之间检查）
+            if (isPaused) {
+                console.log(` 任务暂停在第 ${currentIndex + 1} 个任务之前`);
+                return;
+            }
+            
+            try {
+                // 执行当前任务（原子性，不可中断）
+                await executeTask(currentIndex);
+                currentIndex++;
+            } catch (error) {
+                // 任务失败，停止执行
+                isRunning = false;
+
+                //防御式写法，防止没初始化
+                if (rejectAll) {
+                    rejectAll(error);
+                }
+                return;
+            }
+        }
+        
+        // 所有任务完成
+        isRunning = false;
+        console.log(`所有任务完成！共 ${tasks.length} 个任务`);
+        
+        if (resolveAll) {
+            resolveAll(results);
+        }
+    };
+    
+    /**
+     * 启动任务执行
+     * @returns {Promise} 返回一个 Promise，在所有任务完成时 resolve
+     */
+    const start = () => {
+        return new Promise((resolve, reject) => {
+            if (isRunning && !isPaused) {
+                console.warn(' 任务已在运行中');
+                return;
+            }
+            
+            // 如果是暂停状态，恢复执行
+            if (isPaused) {
+                console.log(`恢复执行，从第 ${currentIndex + 1} 个任务开始`);
+                isPaused = false;
+                isRunning = true;
+                runTasks();
+            } else {
+                // 首次启动
+                console.log(`开始执行任务队列，共 ${tasks.length} 个任务`);
+                currentIndex = 0;
+                results.length = 0;
+                isRunning = true;
+                isPaused = false;
+                
+                resolveAll = resolve;
+                rejectAll = reject;
+                
+                runTasks();
+            }
+        });
+    };
+    
+    /**
+     * 暂停任务执行
+     * 注意：只能在两个任务之间暂停，当前正在执行的任务会完成
+     */
+    const pause = () => {
+        //看isrunning和ispaused
+        if (!isRunning) {
+            console.warn('任务未在运行中，无法暂停');
+            return;
+        }
+        
+        if (isPaused) {
+            console.warn(' 任务已经暂停');
+            return;
+        }
+        
+        isPaused = true;
+        console.log('请求暂停任务（当前任务完成后暂停）');
+    };
+    
+    /**
+     * 获取当前状态
+     */
+    const getStatus = () => {
+        return {
+            total: tasks.length,
+            current: currentIndex,
+            completed: results.filter(r => r && r.success).length,
+            failed: results.filter(r => r && !r.success).length,
+            //对象里的 key 名和变量名 完全一样，简写语法糖
+            isRunning,
+            isPaused,
+            results: [...results]
+        };
+    };
+    
+    // 返回控制接口
+    return {
+        start,
+        pause,
+        getStatus  // 额外提供状态查询方法
+    };
+}
+
+
+// ==================== 使用示例 ====================
+
+/**
+ * 创建一个模拟异步任务
+ * @param {number} id - 任务 ID
+ * @param {number} duration - 任务执行时长（毫秒）
+ * @param {boolean} shouldFail - 是否模拟失败
+ */
+function createTask(id, duration = 1000, shouldFail = false) {
+    //返回一个异步函数
+    return async () => {
+        return new Promise((resolve, reject) => {
+            setTimeout(() => {
+                if (shouldFail) {
+                    reject(new Error(`任务 ${id} 执行失败`));
+                } else {
+                    resolve(`任务 ${id} 的结果`);
+                }
+            }, duration);
+        });
+    };
+}
+
+// ==================== 示例 1：基本使用 ====================
+async function example1() {
+    console.log('\n========== 示例 1：基本使用 ==========\n');
+    
+    const tasks = [
+        createTask(1, 1000),
+        createTask(2, 800),
+        createTask(3, 1200),
+        createTask(4, 500),
+        createTask(5, 900)
+    ];
+    
+    const processor = processTasks(tasks);
+    
+    // 启动任务
+    //不加 await → 得到的是 Promise 对象；
+    //加了 await → 得到的是 Promise 解析后的实际结果。
+    const results = await processor.start();
+    
+    console.log('\n📊 执行结果:');
+    results.forEach(result => {
+        console.log(`  任务 ${result.index + 1}: ${result.success ? '✅ 成功' : '❌ 失败'} - ${result.result || result.error}`);
+    });
+}
+example1();
+
+
+// // ==================== 示例 2：暂停和恢复 ====================
+// async function example2() {
+//     console.log('\n========== 示例 2：暂停和恢复 ==========\n');
+    
+//     const tasks = [
+//         createTask(1, 1000),
+//         createTask(2, 1000),
+//         createTask(3, 1000),
+//         createTask(4, 1000),
+//         createTask(5, 1000)
+//     ];
+    
+//     const processor = processTasks(tasks);
+    
+//     // 启动任务
+//     processor.start().then(results => {
+//         console.log('\n📊 所有任务完成！');
+//         console.log('结果:', results.map(r => r.result));
+//     });
+    
+//     // 2 秒后暂停
+//     setTimeout(() => {
+//         console.log('\n--- 用户请求暂停 ---');
+//         processor.pause();
+//     }, 2500);
+    
+//     // 5 秒后恢复
+//     setTimeout(() => {
+//         console.log('\n--- 用户请求恢复 ---');
+//         processor.start();
+//     }, 5000);
+// }
+
+// // ==================== 示例 3：处理任务失败 ====================
+// async function example3() {
+//     console.log('\n========== 示例 3：处理任务失败 ==========\n');
+    
+//     const tasks = [
+//         createTask(1, 500),
+//         createTask(2, 500),
+//         createTask(3, 500, true),  // 这个任务会失败
+//         createTask(4, 500),
+//         createTask(5, 500)
+//     ];
+    
+//     const processor = processTasks(tasks);
+    
+//     try {
+//         await processor.start();
+//     } catch (error) {
+//         console.log('\n❌ 任务队列执行失败:', error.message);
+//         console.log('📊 当前状态:', processor.getStatus());
+//     }
+// }
+
+// // ==================== 示例 4：实际应用场景 - 批量处理数据 ====================
+// async function example4() {
+//     console.log('\n========== 示例 4：批量处理数据 ==========\n');
+    
+//     // 模拟需要处理的数据
+//     const dataList = [
+//         { id: 1, name: '用户A', email: 'a@example.com' },
+//         { id: 2, name: '用户B', email: 'b@example.com' },
+//         { id: 3, name: '用户C', email: 'c@example.com' },
+//         { id: 4, name: '用户D', email: 'd@example.com' },
+//         { id: 5, name: '用户E', email: 'e@example.com' }
+//     ];
+    
+//     // 将数据处理转换为任务
+//     const tasks = dataList.map(data => {
+//         return async () => {
+//             // 模拟 API 调用
+//             await new Promise(resolve => setTimeout(resolve, 800));
+//             return {
+//                 userId: data.id,
+//                 processed: true,
+//                 timestamp: new Date().toISOString()
+//             };
+//         };
+//     });
+    
+//     const processor = processTasks(tasks);
+//     const results = await processor.start();
+    
+//     console.log('\n📊 处理结果:');
+//     results.forEach(result => {
+//         console.log(`  ${JSON.stringify(result.result)}`);
+//     });
+// }
+
+// // ==================== 运行示例 ====================
+// async function runExamples() {
+//     // 运行示例 1
+//     await example1();
+    
+//     // 等待 2 秒
+//     await new Promise(resolve => setTimeout(resolve, 2000));
+    
+//     // 运行示例 2（需要手动等待完成）
+//     // await example2();
+//     // await new Promise(resolve => setTimeout(resolve, 8000));
+    
+//     // 运行示例 3
+//     await example3();
+    
+//     // 等待 2 秒
+//     await new Promise(resolve => setTimeout(resolve, 2000));
+    
+//     // 运行示例 4
+//     await example4();
+// }
+</script>
+</html>
