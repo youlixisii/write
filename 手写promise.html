@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyPromise 实现</title>
+</head>
+<body>
+    <!-- 手写 Promise：三种状态，then/catch/finally，resolve/reject，all/race，链式调用 -->
+</body>
+
+<script>
+    // 三种状态
+    const PENDING = 'pending';
+    const FULFILLED = 'fulfilled';
+    const REJECTED = 'rejected';
+
+    /**
+     * 手写 Promise 类（A+规范）
+     */
+    class MyPromise {
+        //executor其实是一个函数，(resolve, reject) => { … }
+        constructor(executor) {
+            this.state = PENDING;
+            this.value = undefined;
+            this.reason = undefined;
+
+            // 回调队列
+            //把这些“未来要执行的回调”先缓存在数组里。
+            //等状态变成 fulfilled 或 rejected，再一口气执行它们。
+            this.onFulfilledCallbacks = [];
+            this.onRejectedCallbacks = [];
+
+            //resolve：改状态，存值，执行回调
+            //传入一个value
+            const resolve = (value) => {
+                if (this.state === PENDING) {
+                    this.state = FULFILLED;
+                    this.value = value;
+                    this.onFulfilledCallbacks.forEach(fn => fn());
+                }
+            };
+
+            const reject = (reason) => {
+                if (this.state === PENDING) {
+                    this.state = REJECTED;
+                    this.reason = reason;
+                    this.onRejectedCallbacks.forEach(fn => fn());
+                }
+            };
+
+            try {
+                executor(resolve, reject);
+            } catch (error) {
+                reject(error);
+            }
+        }
+
+        /**
+         * then 方法，两个回调，成功/失败回调
+         * 返回一个promise，根据state判断，fufilled/rejected执行函数，pending存储回调
+         */
+        then(onFulfilled, onRejected) {
+            // 值穿透，不是函数则把当前值传递
+            onFulfilled = typeof onFulfilled === 'function' ? onFulfilled : value => value;
+            onRejected = typeof onRejected === 'function' ? onRejected : reason => { throw reason; };
+
+            //then返回的一个新的promise
+            const promise2 = new MyPromise((resolve, reject) => {
+
+                //当当前 Promise 成功时要执行的逻辑
+                const handleFulfilled = () => {
+                    //异步执行回调
+                    setTimeout(() => {
+                        try {
+                            //执行用户传入的 onFulfilled(this.value)，得到返回值 x
+                            const x = onFulfilled(this.value);
+                            //解析返回值，
+                            //如果 x 是普通值 → promise2 成功
+                            // 如果 x 是 Promise/thenable → 等它完成再决定 promise2 的状态
+                            resolvePromise(promise2, x, resolve, reject);
+                        } catch (e) {
+                            reject(e);
+                        }
+                    }, 0);
+                };
+
+                const handleRejected = () => {
+                    setTimeout(() => {
+                        try {
+                            const x = onRejected(this.reason);
+                            resolvePromise(promise2, x, resolve, reject);
+                        } catch (e) {
+                            reject(e);
+                        }
+                    }, 0);
+                };
+                //如果 当前 Promise 已经成功/失败 → 立即执行对应处理函数（异步触发）
+                if (this.state === FULFILLED) {
+                    handleFulfilled();
+                } else if (this.state === REJECTED) {
+                    handleRejected();
+                } else {
+                    //如果 当前 Promise 还在 pending → 先把处理函数存起来，等状态改变时再执行
+                    this.onFulfilledCallbacks.push(handleFulfilled);
+                    this.onRejectedCallbacks.push(handleRejected);
+                }
+            });
+
+            return promise2;
+        }
+
+        /**
+         * catch，调用当前promise的then方法
+         */
+        catch(onRejected) {
+            return this.then(null, onRejected);
+        }
+
+        /**
+         * finally
+         * 无论成功失败都会执行finally，直接执行callback，再then控制成功/失败的情况
+         */
+        finally(callback) {
+            return this.then(
+                value => MyPromise.resolve(callback()).then(() => value),
+                reason => MyPromise.resolve(callback()).then(() => { throw reason; })
+            );
+        }
+
+        //作用范围：属于整个类（所有实例都可以访问），是工具函数
+        // 功能：
+        // MyPromise.resolve(value)：把任意值（普通值、Promise 实例、thenable）包装成一个 新的 MyPromise 实例
+        // MyPromise.reject(reason)：创建一个新的 直接被拒绝的 MyPromise 实例
+
+        /**
+         * 静态 resolve
+         */
+        static resolve(value) {
+            if (value instanceof MyPromise) return value;
+
+            //这里的resolve就是构造函数里的resolve
+            ////这里不能调用自己，否则会陷入循环
+            return new MyPromise(resolve => resolve(value));
+        }
+
+        /**
+         * 静态 reject
+         * 直接拒绝，不需要关心是否是promise
+         */
+        static reject(reason) {
+            return new MyPromise((_, reject) => reject(reason));
+        }
+
+        //all和race也是静态方法
+        /**
+         * all
+         * 接收一个promises数组，返回一个新的promise，当所有promise都成功时，这个新的promise才resolve
+         *      它返回一个数组，里面是每个promise的结果，如果有任何一个失败，立即reject
+         */
+        static all(promises) {
+            return new MyPromise((resolve, reject) => {
+                if (!Array.isArray(promises)) {
+                    return reject(new TypeError('Argument must be an array'));
+                }
+
+                const results = [];
+                let count = 0;
+
+                if (promises.length === 0) return resolve(results);
+
+                promises.forEach((promise, index) => {
+                    //立即执行，用静态resolve
+                    //储存结果，计数
+                    MyPromise.resolve(promise).then(
+                        value => {
+                            results[index] = value;
+                            count++;
+                            if (count === promises.length) {
+                                //这个才是真正的控制new mypromise的resolve
+                                resolve(results);
+                            }
+                        },
+                        reason => reject(reason)
+                    );
+                });
+            });
+        }
+
+        /**
+         * race
+         * 接收一个 Promise 数组，返回一个新的 Promise，
+         * 只要数组中有一个 Promise 先完成（成功或失败），新的 Promise 就立即完成。
+         */
+        static race(promises) {
+            return new MyPromise((resolve, reject) => {
+                if (!Array.isArray(promises)) {
+                    return reject(new TypeError('Argument must be an array'));
+                }
+
+                promises.forEach(promise => {
+                    MyPromise.resolve(promise).then(resolve, reject);
+                });
+            });
+        }
+    }
+
+    /**
+     * 解析 then 回调返回值（A+规范核心）
+     * promise2 含义：调用 .then 返回的新 Promise
+     * x 含义：前一个 .then 的回调（onFulfilled 或 onRejected）返回的值。
+     * resolve 含义：promise2 的 resolve 函数（构造函数里传进来的那个）
+     */
+    function resolvePromise(promise2, x, resolve, reject) {
+        //防止链式调用中出现循环引用
+        //如果发现返回值 x 就是同一个 Promise 本身 → 直接 reject
+        if (promise2 === x) {
+            return reject(new TypeError('Chaining cycle detected for promise'));
+        }
+
+        //保证 resolve 或 reject 只会被调用一次，因为 thenable 的 then 可能会调用两次。
+        let called = false;
+
+        //如果 x 是对象或函数，可能是 thenable → 需要取它的 then 方法进一步处理。
+        if (x !== null && (typeof x === 'object' || typeof x === 'function')) {
+            try {
+                const then = x.then;
+
+                //如果 x.then 是函数，就把 x 当成 thenable 调用。
+                if (typeof then === 'function') {
+                    then.call(
+                        x,
+                        //当 thenable 执行成功时调用，把它的结果递归交给 resolvePromise，继续解析，确保支持 多层 then 链
+                        y => {
+                            if (called) return;
+                            called = true;
+                            resolvePromise(promise2, y, resolve, reject);
+                        },
+                        //当 thenable 执行失败时调用，直接用 reject 把 promise2 标记为 rejected
+                        r => {
+                            if (called) return; // 防止同一个 then 被调用多次
+                            called = true;  // 标记已经调用过
+                            reject(r);
+                        }
+                    );
+                } else {
+                    //x 有 then 属性，但不是函数 -> 直接 resolve
+                    resolve(x);
+                }
+            } catch (e) {
+                if (called) return;
+                called = true;
+                reject(e);
+            }
+        }
+        else {
+            // x 根本不是对象或函数，直接 resolve
+            resolve(x);
+        }
+    }
+
+    // CommonJS 导出（可忽略）
+    if (typeof module !== 'undefined' && module.exports) {
+        module.exports = MyPromise;
+    }
+
+    // 1. 基础 resolve
+new MyPromise((resolve) => {
+    resolve(100);
+}).then(value => {
+    console.log('resolve:', value); // 输出：resolve: 100
+});
+
+// // 2. 基础 reject
+// new MyPromise((_, reject) => {
+//     reject('error happened');
+// }).then(null, reason => {
+//     console.log('reject:', reason); // 输出：reject: error happened
+// });
+
+// // 3. 链式 then
+// new MyPromise(resolve => resolve(1))
+//     .then(v => v + 1)
+//     .then(v => v * 2)
+//     .then(v => console.log('chain result:', v)); // 输出：chain result: 4
+
+// // 4. catch 捕获错误
+// new MyPromise((_, reject) => reject('oops'))
+//     .then(v => console.log(v))
+//     .catch(err => console.log('catch:', err)); // 输出：catch: oops
+
+// // 5. finally 无论成功或失败都执行
+// new MyPromise(resolve => resolve('done'))
+//     .finally(() => console.log('finally called'))
+//     .then(v => console.log('finally result:', v)); 
+// // 输出：finally called
+// // 输出：finally result: done
+
+// new MyPromise((_, reject) => reject('fail'))
+//     .finally(() => console.log('finally called again'))
+//     .catch(err => console.log('finally catch:', err));
+// // 输出：finally called again
+// // 输出：finally catch: fail
+
+// // 6. static resolve & reject
+// MyPromise.resolve(123).then(v => console.log('static resolve:', v)); // 输出：static resolve: 123
+// MyPromise.reject('static reject').catch(e => console.log('static reject:', e)); // 输出：static reject: static reject
+
+// // 7. all
+// MyPromise.all([
+//     MyPromise.resolve(1),
+//     2,
+//     new MyPromise(resolve => setTimeout(() => resolve(3), 100))
+// ]).then(res => console.log('all result:', res));
+// // 输出：all result: [1, 2, 3]
+
+// // 8. race
+// MyPromise.race([
+//     new MyPromise(resolve => setTimeout(() => resolve('first'), 50)),
+//     new MyPromise(resolve => setTimeout(() => resolve('second'), 100))
+// ]).then(res => console.log('race result:', res));
+// // 输出：race result: first
+
+</script>
+</html>

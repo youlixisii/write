@@ -138,6 +138,7 @@ function processTasks(tasks) {
                 isRunning = true;
                 isPaused = false;
                 
+                //你必须有resolve/reject，不然怎么用？！
                 resolveAll = resolve;
                 rejectAll = reject;
                 
