@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <!-- 所以每一次调用事件都是：
+        调用最外层 Chocolate
+        Chocolate 看不懂 price → 让内部的 Sugar 来算
+        Sugar 看不懂 → 让内部的 Milk 来算
+        Milk 再让最底层 Coffee 来算
+        Coffee 给出基础值
+        再一层层往外加价 -->
+</body>
+<script>
+    // 基础咖啡组件
+    class Coffee {
+        cost() {
+            return 10; // 基础咖啡价格
+        }
+
+        getDescription() {
+            return "普通咖啡";
+        }
+    }
+
+    // 装饰者基类
+    class CoffeeDecorator extends Coffee {
+        constructor(coffee) {
+            super();
+            this.coffee = coffee; // 被装饰的咖啡对象
+        }
+
+        // 它的作用是把 cost() 这个调用 层层向内传下去，直到最里面的“基础咖啡”。
+        cost() {
+            return this.coffee.cost();
+        }
+
+        getDescription() {
+            return this.coffee.getDescription();
+        }
+    }
+
+    // 具体装饰者：牛奶
+    class MilkDecorator extends CoffeeDecorator {
+        // 自动有这一段，不写也存在
+        // constructor(coffee) {
+        //    super(coffee);
+        // }
+
+        cost() {
+            return this.coffee.cost() + 3; // 加价3元
+        }
+
+        getDescription() {
+            return this.coffee.getDescription() + " + 牛奶";
+        }
+    }
+
+    // 具体装饰者：糖
+    class SugarDecorator extends CoffeeDecorator {
+        cost() {
+            return this.coffee.cost() + 1; // 加价1元
+        }
+
+        getDescription() {
+            return this.coffee.getDescription() + " + 糖";
+        }
+    }
+
+    // 具体装饰者：巧克力
+    class ChocolateDecorator extends CoffeeDecorator {
+        cost() {
+            return this.coffee.cost() + 5; // 加价5元
+        }
+
+        getDescription() {
+            return this.coffee.getDescription() + " + 巧克力";
+        }
+    }
+
+    // 使用示例
+    let coffee = new Coffee();
+    console.log(`基础款：${coffee.getDescription()}，价格：${coffee.cost()}元`);
+
+    // 动态添加装饰
+    //现在 coffee 是一个 MilkDecorator 对象，它内部包装着基础咖啡
+    coffee = new MilkDecorator(coffee);
+
+    //现在 coffee 是一个 SugarDecorator 对象，它内部包装着 MilkDecorator
+    // 注意：这里的 coffee 已经不是原始 Coffee 了，它是 被牛奶装饰过的 Coffee
+    coffee = new SugarDecorator(coffee);
+
+    // 现在 coffee 是一个 ChocolateDecorator 对象，它内部包装着 SugarDecorator
+    coffee = new ChocolateDecorator(coffee);
+
+    //调用的是最外面的
+    console.log(`豪华款：${coffee.getDescription()}，价格：${coffee.cost()}元`);
+
+    /* 输出：
+    基础款：普通咖啡，价格：10元
+    豪华款：普通咖啡 + 牛奶 + 糖 + 巧克力，价格：19元
+    */
+</script>
+</html>

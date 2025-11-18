@@ -188,196 +188,68 @@ example1();
 </script> -->
 
 <script>
-
-    const PENDING='pending'
-    const FULFILLED='fulfilled'
-    const REJECTED='rejected'
-
-    class MyPromise{
-        constructor(executor){
-            this.state=PENDING
-            this.value=undefined
-            this.reason=undefined
-
-            this.onFulfilledCallbacks=[]
-            this.onRejectedCallbacks=[]
-
-            const resolve=(value)=>{
-                if(this.state===PENDING){
-                    this.state=FULFILLED
-                    this.value=value
-                    this.onFulfilledCallbacks.forEach(fn=>fn())
-                }
-            }
-
-            const reject=(reason)=>{
-                if(this.state===PENDING){
-                    this.state=REJECTED
-                    this.reason=reason
-                    this.onRejectedCallbacks.forEach(fn=>fn())
-                }
-            }
-
-            try {
-                executor(resolve,reject)
-            } catch (error) {
-                reject(error)
-            }
-
+    class Coffee{
+        cost(){
+            return 10
         }
 
-        then(onFulfilled,onRejected){
-            onFulfilled=typeof onFulfilled==='function'? onFulfilled :value=>value
-            onRejected=typeof onRejected==='function' ? onRejected :reason=>{throw reason}
-
-            const promise2=new MyPromise((resolve,reject)=>{
-                const handleFulfilled=()=>{
-                    setTimeout(() => {
-                        try {
-                            const x=onFulfilled(this.value)
-                            resolvePromise(promise2,x,resolve,reject)
-                        } catch (error) {
-                            reject(error)
-                        }
-                    }, 0);
-                }
-
-                const handleRejected=()=>{
-                    setTimeout(() => {
-                        try {
-                            const x=onRejected(this.reason)
-                            resolvePromise(promise2,x,resolve,reject)
-                        } catch (error) {
-                            reject(error)
-                        }
-                    }, 0);
-                }
-
-                if(this.state===FULFILLED){
-                    handleFulfilled()
-                }else if(this.state===REJECTED){
-                    handleRejected()
-                }else{
-                    this.onFulfilledCallbacks.push(handleFulfilled)
-                    this.onRejectedCallbacks.push(handleRejected)
-
-                }
-            })
-
-            return promise2
-        }
-
-        catch(onRejected){
-            return this.then(null,onRejected)
-        }
-
-        finally(callback){
-            return this.then(
-                value=>MyPromise.resolve(callback()).then(()=>value),
-                reason=>MyPromise.resolve(callback()).then(()=>{throw reason})
-            )
-        }
-
-        static resolve(value){
-            if(value instanceof MyPromise) return value
-
-            return new MyPromise((resolve)=>resolve(value))
-        }
-
-        static reject(reason){
-
-            return new MyPromise((_,reject)=>reject(reason))
-
-        }
-
-        static all(promises){
-
-            return new MyPromise((resolve,reject)=>{
-                if(!Array.isArray(promises)){
-                    return reject(new TypeError('Arguments should be an array'))
-                }
-
-                let count=0
-                let results=[]
-
-                if(promises.length===0) return resolve(results)
-
-
-                promises.forEach((promise,index)=>{
-                    MyPromise.resolve(promise).then(
-                        value=>{
-                            results[index]=value
-                            count++
-                            if(count===promises.length) {
-                                resolve(results)
-                            }
-                        },
-                        reason=>reject(reason)
-                    )
-                })
-            })
-
-        }
-
-        static race(promises){
-
-            return new MyPromise((resolve,reject)=>{
-                if(!Array.isArray(promises)){
-                    return reject(new TypeError('Arguments should be an array'))
-                }
-
-                promises.forEach(promise=>{
-                    MyPromise.resolve(promise).then(resolve,reject)
-                })
-
-            })
-
+        getDescription(){
+            return "普通咖啡"
         }
     }
 
-    function resolvePromise(promise2,x,resolve,reject){
-        if(promise2===x){
-            return reject(new TypeError('Chaining cycle deleted for promise'))
+    class CoffeeDecorator extends Coffee{
+        constructor(coffee){
+            super()
+            this.coffee=coffee
         }
 
-        let called=false
-        if(x!==null && (typeof x==='object' && typeof x==='function')){
-            try {
-                const then=x.then
-                if(typeof then==='function'){
-                    then.call(
-                        x,
-                        y=>{
-                            if(called) return
-                            called=true
-                            resolvePromise(promise2,y,resolve,reject)
-                        },
-                        r=>{
-                            if(called) return
-                            called=true
-                            reject(r)
-                        }
-                    )
-                }else{
-                    resolve(x)
-                }
-                
-            } catch (error) {
-                if(called) return
-                called=true
-                reject(error)
-            }
-        }else{
-            resolve(x)
+        cost(){
+            return this.cofee.cost()
+        }
+
+        getDescription(){
+            return this.coffee.getDescription()
         }
     }
 
-    // 1. 基础 resolve
-new MyPromise((resolve) => {
-    resolve(100);
-}).then(value => {
-    console.log('resolve:', value); // 输出：resolve: 100
-});
+    class MilkDecorator extends CoffeeDecorator{
+        cost(){
+            return this.coffee.cost()+3
+        }
+
+        getDescription(){
+            return this.coffee.getDescription()+"+ 牛奶"
+        }
+    }
+
+    class SugarDecorator extends CoffeeDecorator{
+        cost(){
+            return this.coffee.cost()+1
+        }
+
+        getDescription(){
+            return this.coffee.getDescription()+"+ 糖"
+        }
+    }
+
+    class ChocolateDecorator extends CoffeeDecorator{
+        cost(){
+            return this.coffee.cost()+5
+        }
+
+        getDescription(){
+            return this.coffee.getDescription()+"+巧克力"
+        }
+    }
+
+    let coffee=new Coffee()
+    console.log(`基础款：${coffee.getDescription()}，价格：${coffee.cost()}`);
+    
+    coffee=new MilkDecorator(coffee)
+
+    coffee=new SugarDecorator(coffee)
+    console.log(`豪华款：${coffee.getDescription()}，价格：${coffee.cost()}`);
 
 </script>
 </html>

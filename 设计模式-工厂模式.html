@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <!-- 它提供了一个统一的接口来创建对象，而无需指定具体的类 -->
+</body>
+
+<script>
+    // 基类：交通工具
+class Vehicle {
+  constructor(name) {
+    this.name = name;
+  }
+
+  // 公共接口方法
+  drive() {
+    throw new Error("必须在子类中实现 drive 方法");
+  }
+}
+
+// 具体产品类：汽车
+class Car extends Vehicle {
+  constructor(name) {
+    super(name);
+    this.type = "汽车";
+  }
+
+  drive() {
+    console.log(`${this.name} (${this.type}) 正在公路上奔驰`);
+  }
+}
+
+// 具体产品类：自行车
+class Bike extends Vehicle {
+  constructor(name) {
+    super(name);
+    this.type = "自行车";
+  }
+
+  drive() {
+    console.log(`${this.name} (${this.type}) 正在林间小径骑行`);
+  }
+}
+
+// 工厂类
+class VehicleFactory {
+  static createVehicle(type, name) {
+    switch (type.toLowerCase()) {
+      case "car":
+        return new Car(name);
+      case "bike":
+        return new Bike(name);
+      default:
+        throw new Error("无效的交通工具类型"); //记得这里要throw！
+    }
+  }
+}
+
+// 使用示例
+const vehicle1 = VehicleFactory.createVehicle("car", "特斯拉 Model S");
+const vehicle2 = VehicleFactory.createVehicle("bike", "捷安特 X1");
+
+vehicle1.drive(); // 输出：特斯拉 Model S (汽车) 正在公路上奔驰
+vehicle2.drive(); // 输出：捷安特 X1 (自行车) 正在林间小径骑行
+
+// 尝试创建未知类型
+try {
+  VehicleFactory.createVehicle("spaceship", "星际飞船");
+} catch (e) {
+  console.log(e.message); // 输出：无效的交通工具类型
+}
+</script>
+</html>

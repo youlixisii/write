@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <!-- 单一实例：整个应用程序中只存在一个该类的实例
+        全局访问：提供统一的访问方式获取该实例
+        延迟初始化：实例在第一次被请求时才创建 -->
+</body>
+
+<script>
+    class Singleton {
+    static instance; //静态属性存储唯一实例
+  
+    // 通过静态方法获取唯一实例
+    static getInstance() {
+      if (!Singleton.instance) {
+        Singleton.instance = new Singleton();
+      }
+      return Singleton.instance;
+    }
+  
+    // 禁止直接 new 实例化,防止直接通过 new 创建实例
+    constructor() {
+      if (Singleton.instance) {
+        throw new Error('Use Singleton.getInstance() to get the single instance');
+      }
+      // 初始化逻辑
+      this.name = '单例对象';
+    }
+  
+    // 示例方法
+    log() {
+      console.log(`我是${this.name}`);
+    }
+  }
+  
+  // 使用示例
+  const s1 = Singleton.getInstance();
+  const s2 = Singleton.getInstance();
+  s1.log();          // 输出：我是单例对象
+  console.log(s1 === s2); // 输出：true
+  new Singleton();   // 报错：Use Singleton.getInstance()...
+</script>
+</html>
