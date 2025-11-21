@@ -8,248 +8,40 @@
 <body>
     
 </body>
-<!-- <script>
-    //任务控制
-    function processTasks(tasks){
-        const results=[]
-        let currentIndex=0
-        let isRunning=false
-        let isPaused=false
-
-        let resolveAll=null
-        let rejectAll=null
-
-        const executeTask=async (index)=>{
-            try {
-                console.log(`开始执行第${index+1}/${tasks.length}个任务`);
-                
-                const startTime=Date.now()
-                const result=await tasks[index]()
-                const duration=Date.now()-startTime
-
-                console.log(`第${index+1}个任务完成，耗时：${duration}`);
-            
-                results[index]={
-                    index:index,
-                    success:true,
-                    result:result,
-                    duration:duration
-                }
-
-            } catch (error) {
-                console.log(`第${index+1}个任务失败`);
-                
-                results[index]={
-                    index:index,
-                    success:false,
-                    error:error.message,
-                    duration:0
-                }
-                throw error
-            }
-        }
-
-        const runTasks=async ()=>{
-            while(currentIndex<tasks.length){
-                if(isPaused){
-                    console.log(`第${currentIndex+1}个任务已经暂停`);
-                    return
-                }
-
-                try {
-                    await executeTask(currentIndex)
-                    currentIndex++
-                } catch (error) {
-                    isRunning=false
-                    if(rejectAll){
-                        rejectAll(error)
-                    }
-                }
-            }
-
-            console.log(`全部任务已完成，共${tasks.length}个任务`);
-            
-            isRunning=false
-            if(resolveAll){
-                resolveAll(results)
-            }
-        }
-
-        const start=()=>{
-            return new Promise((resolve,reject)=>{
-                if(isRunning&&!isPaused){
-                    console.log('任务已经在运行');
-                    return
-                }
-
-                if(isPaused){
-                    isPaused=false
-                    isRunning=true
-                    runTasks()
-                }else{
-                    isPaused=false
-                    isRunning=true
-                    currentIndex=0
-
-                    results.length=0
-                    rejectAll=reject
-                    resolveAll=resolve
-                    runTasks()
-                }
-            })
-
-        }
-
-        const pause=()=>{
-            if(!isRunning){
-                console.log(`没有任务运行，无法暂停`);
-                return
-            }
-
-            if(isPaused){
-                console.log(`任务已经暂停`);
-                return
-                
-            }
-
-            isPaused=true
-            console.log(`当前任务已经完成，下一个任务暂停`);
-            
-        }
-
-        const getStatus=()=>{
-            return {
-                total:tasks.length,
-                current:currentIndex,
-                completed:results.filter(r=>r&&r.success).length,
-                failed:results.filter(r=>r&&!r.success).length,
-                isRunning,
-                isPaused,
-                results:[...results]
-            }
-        }
-
-        return {
-            start,
-            pause,
-            getStatus
-        }
-    }
-
-
-    // ==================== 使用示例 ====================
-
-/**
- * 创建一个模拟异步任务
- * @param {number} id - 任务 ID
- * @param {number} duration - 任务执行时长（毫秒）
- * @param {boolean} shouldFail - 是否模拟失败
- */
-function createTask(id, duration = 1000, shouldFail = false) {
-    //返回一个异步函数
-    return async () => {
-        return new Promise((resolve, reject) => {
-            setTimeout(() => {
-                if (shouldFail) {
-                    reject(new Error(`任务 ${id} 执行失败`));
-                } else {
-                    resolve(`任务 ${id} 的结果`);
-                }
-            }, duration);
-        });
-    };
-}
-
-// ==================== 示例 1：基本使用 ====================
-async function example1() {
-    console.log('\n========== 示例 1：基本使用 ==========\n');
-    
-    const tasks = [
-        createTask(1, 1000),
-        createTask(2, 800),
-        createTask(3, 1200),
-        createTask(4, 500),
-        createTask(5, 900)
-    ];
-    
-    const processor = processTasks(tasks);
-    
-    // 启动任务
-    //不加 await → 得到的是 Promise 对象；
-    //加了 await → 得到的是 Promise 解析后的实际结果。
-    const results = await processor.start();
-    
-    console.log('\n📊 执行结果:');
-    results.forEach(result => {
-        console.log(`  任务 ${result.index + 1}: ${result.success ? '✅ 成功' : '❌ 失败'} - ${result.result || result.error}`);
-    });
-}
-example1();
-</script> -->
-
 <script>
-    class Coffee{
-        cost(){
-            return 10
-        }
-
-        getDescription(){
-            return "普通咖啡"
+    class ChinaSocket{
+        supply(){
+            return "220V 交流电"
         }
     }
 
-    class CoffeeDecorator extends Coffee{
-        constructor(coffee){
+    class USPlug{
+        specialRequest(){
+            return "110V 直流电"
+        }
+    }
+
+    class PowerAdapter extends ChinaSocket{
+        constructor(usPlug){
             super()
-            this.coffee=coffee
+            this.usPlug=usPlug
         }
 
-        cost(){
-            return this.cofee.cost()
-        }
-
-        getDescription(){
-            return this.coffee.getDescription()
+        supply(){
+            const originPower=this.usPlug.specialRequest()
+            return originPower.replace("110V","220V").replace("直流电","交流电")
         }
     }
 
-    class MilkDecorator extends CoffeeDecorator{
-        cost(){
-            return this.coffee.cost()+3
-        }
+    const chineseDevice=new ChinaSocket()
+    console.log(chineseDevice.supply());
 
-        getDescription(){
-            return this.coffee.getDescription()+"+ 牛奶"
-        }
-    }
+    const usDevice=new USPlug()
 
-    class SugarDecorator extends CoffeeDecorator{
-        cost(){
-            return this.coffee.cost()+1
-        }
-
-        getDescription(){
-            return this.coffee.getDescription()+"+ 糖"
-        }
-    }
-
-    class ChocolateDecorator extends CoffeeDecorator{
-        cost(){
-            return this.coffee.cost()+5
-        }
-
-        getDescription(){
-            return this.coffee.getDescription()+"+巧克力"
-        }
-    }
-
-    let coffee=new Coffee()
-    console.log(`基础款：${coffee.getDescription()}，价格：${coffee.cost()}`);
+    const adapter=new PowerAdapter(usDevice)
     
-    coffee=new MilkDecorator(coffee)
-
-    coffee=new SugarDecorator(coffee)
-    console.log(`豪华款：${coffee.getDescription()}，价格：${coffee.cost()}`);
-
+    console.log(adapter.supply());
+    
+    
 </script>
 </html>

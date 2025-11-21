@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script>
+    // 抽象数据处理器
+    class DataProcessor {
+        //定义模板方法 process：流程固定，包括验证、清洗、转换、保存和钩子操作。
+        process(data) {
+            console.log('=== 开始数据处理流程 ===');
+            
+            this.validateData(data); //数据验证
+            const cleanedData = this.cleanData(data); //子类实现，数据清洗
+            const transformedData = this.transformData(cleanedData); //子类实现，数据转换
+            this.hookBeforeSave(transformedData);//保存前钩子
+            const result = this.saveData(transformedData); //保存数据
+            this.hookAfterSave(result); //保存数据
+            
+            console.log('=== 数据处理完成 ===');
+            return result;
+        }
+
+        // 基础操作：数据验证
+        validateData(data) {
+            if (!data || data.length === 0) {
+                throw new Error('数据不能为空');
+            }
+            console.log('数据验证通过');
+        }
+
+        // 抽象方法：数据清洗（子类必须实现）
+        cleanData(data) {
+            throw new Error('必须实现 cleanData 方法');
+        }
+
+        // 抽象方法：数据转换（子类必须实现）
+        transformData(data) {
+            throw new Error('必须实现 transformData 方法');
+        }
+
+        // 基础操作：数据保存
+        saveData(data) {
+            console.log(`保存数据: ${JSON.stringify(data).slice(0, 50)}...`);
+            return { success: true, data };
+        }
+
+        // 钩子方法：保存前操作（可选）
+        //子类可以重写来在保存前或保存后做特定处理。
+        hookBeforeSave(data) {
+            // 默认空实现
+        }
+
+        // 钩子方法：保存后操作（可选）
+        hookAfterSave(result) {
+            // 默认空实现
+        }
+    }
+
+    // 具体实现：CSV 数据处理器
+    class CSVProcessor extends DataProcessor {
+        cleanData(data) {
+            console.log('CSVProcessor: 清洗CSV数据 - 移除空行和特殊字符');
+            //filter → 过滤空行
+            // trim → 去掉空格
+            // replace(/[^\w\s,]/g, '') → 去掉特殊字符（正则）
+            return data.filter(row => row && row.trim().length > 0)
+                    .map(row => row.replace(/[^\w\s,]/g, ''));
+        }
+
+        transformData(data) {
+            console.log('CSVProcessor: 转换数据为对象数组');
+            // split(',') → CSV拆分
+            // slice(1) → 去掉表头
+            // reduce → 把数组转成对象
+            const headers = data[0].split(',');
+            return data.slice(1).map(row => {
+                const values = row.split(',');
+                return headers.reduce((obj, header, index) => {
+                    obj[header.trim()] = values[index] ? values[index].trim() : '';
+                    return obj;
+                }, {});
+            });
+        }
+
+        // 重写钩子方法
+        //保存前检查数据结构是否合法
+        hookBeforeSave(data) {
+            console.log('CSVProcessor: 验证转换后的数据结构');
+            if (data.length > 0 && !Object.keys(data[0]).length) {
+            throw new Error('数据结构转换失败');
+            }
+        }
+    }
+
+    // 具体实现：JSON 数据处理器
+    class JSONProcessor extends DataProcessor {
+        cleanData(data) {
+            console.log('JSONProcessor: 清洗JSON数据 - 修复格式错误');
+            try {
+                return JSON.parse(data); //将 JSON 字符串解析成对象
+            } catch (error) {
+                // 尝试修复常见的JSON格式问题
+                const fixedData = data.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":')
+                                      .replace(/'/g, '"');
+                return JSON.parse(fixedData);
+            }
+        }
+
+        //扁平化对象（flatten）
+        transformData(data) {
+            console.log('JSONProcessor: 扁平化嵌套结构');
+            const flattenObject = (obj, prefix = '') => {
+            return Object.keys(obj).reduce((acc, key) => {
+                //遍历嵌套对象，把嵌套结构变成“点式路径”
+                const pre = prefix.length ? `${prefix}.` : '';
+                if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                    //Object.assign() 合并对象
+                    Object.assign(acc, flattenObject(obj[key], pre + key));
+                } else {
+                    acc[pre + key] = obj[key];
+                }
+                return acc;
+            }, {});
+            };
+
+            return Array.isArray(data) ? data.map(flattenObject) : [flattenObject(data)];
+        }
+
+        // 重写钩子方法
+        hookAfterSave(result) {
+            //保存后打印日志
+            console.log(`JSONProcessor: 处理完成，共保存 ${result.data.length} 条记录`);
+        }
+    }
+
+    // 使用示例
+    const csvData = [
+        'name,age,city',
+        'Alice,30,Beijing',
+        'Bob,25,Shanghai',
+        'Charlie,35,Guangzhou'
+    ];
+
+    const jsonData = `[
+    {"user": {"name": "Alice", "profile": {"age": 30}}, "city": "Beijing"},
+    {"user": {"name": "Bob", "profile": {"age": 25}}, "city": "Shanghai"}
+    ]`;
+
+    console.log('=== CSV 处理 ===');
+    const csvProcessor = new CSVProcessor();
+    csvProcessor.process(csvData);
+
+    console.log('\n=== JSON 处理 ===');
+    const jsonProcessor = new JSONProcessor();
+    jsonProcessor.process(jsonData);
+
+</script>
+</html>

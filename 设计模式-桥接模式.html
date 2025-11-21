@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>Bridge Pattern Demo</title>
+</head>
+<body>
+    <h3>Canvas 渲染</h3>
+    <canvas id="canvas" width="300" height="200" style="border:1px solid black"></canvas>
+
+    <h3>SVG 渲染</h3>
+    <svg id="svg-container" width="300" height="200" style="border:1px solid black"></svg>
+
+<script>
+// 实现层，在画布画/svg画
+// 形状（Circle/Rect）不管怎么画。
+// 渲染器（Canvas/SVG）不管是什么形状。
+// 它们被“桥接”了。
+
+// 渲染器接口
+class Renderer {
+    renderCircle(x, y, radius) {
+        throw new Error("renderCircle() must be implemented");
+    }
+    renderRectangle(x, y, width, height) {
+        throw new Error("renderRectangle() must be implemented");
+    }
+}
+
+// Canvas渲染器
+class CanvasRenderer extends Renderer {
+    constructor(canvas) {
+        super();
+        //ctx 是 Canvas 的“绘图上下文”，浏览器用它来画图
+        this.ctx = canvas.getContext('2d'); //“从这个 <canvas> 元素上拿到 2D 绘图工具”
+        //它是一个对象，里面提供了各种画图方法
+    }
+
+    //圆心坐标和半径
+    renderCircle(x, y, radius) {
+        this.ctx.beginPath();   //开始一条路径
+        this.ctx.arc(x, y, radius, 0, Math.PI * 2); //画圆
+        this.ctx.stroke();  //描边
+    }
+
+    //左上角点的坐标和宽高
+    renderRectangle(x, y, width, height) {
+        this.ctx.strokeRect(x, y, width, height);   //画矩形
+    }
+}
+
+// SVG渲染器
+//SVG 是实际的 HTML 元素，可以选中、能修改、能响应事件
+class SVGRenderer extends Renderer {
+    constructor(container) {
+        super();
+        this.container = container;  //这个 container 就是页面里的 <svg> 标签。
+    }
+
+    renderCircle(x, y, radius) {
+        //createElementNS 是“创建 SVG 专用标签”
+        // 因为 SVG 需要命名空间（namespace）
+        // 所以不能用普通的 createElement('circle')
+        const circle = document.createElementNS(
+            "http://www.w3.org/2000/svg",  // 命名空间，这是 SVG 标准官方注册的命名空间，世界通用。
+            "circle"                       // 要创建的标签
+        )
+        //这是 SVG 圆的三大基础属性：
+        //setAttribute用于给dom元素添加属性，svg属性是XML的属性，所以必须用这种形式
+        circle.setAttribute("cx", x);
+        circle.setAttribute("cy", y);
+        circle.setAttribute("r", radius);
+
+        //描边
+        circle.setAttribute("stroke", "black");
+        //填充（这里设置 none 就是不填色）
+        circle.setAttribute("fill", "none");
+
+        //放进 SVG 容器
+        this.container.appendChild(circle);
+    }
+
+    renderRectangle(x, y, width, height) {
+        //一样的逻辑，画矩形用 <rect>：
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        rect.setAttribute("x", x);
+        rect.setAttribute("y", y);
+        rect.setAttribute("width", width);
+        rect.setAttribute("height", height);
+        rect.setAttribute("stroke", "black");
+        rect.setAttribute("fill", "none");
+        this.container.appendChild(rect);
+    }
+}
+
+// 图像抽象，是负责是什么形状，不负责怎么画
+// 抽象 Shape
+class Shape {
+    constructor(renderer) {
+        this.renderer = renderer;
+    }
+
+    //强制子类必须实现 draw()
+    draw() {
+        throw new Error("draw() must be implemented");
+    }
+}
+
+// 圆形
+class Circle extends Shape {
+    //我是圆，我要让某个 renderer 来帮我画。
+    constructor(renderer, x, y, radius) {
+        super(renderer);
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+    }
+
+    draw() {
+        this.renderer.renderCircle(this.x, this.y, this.radius);
+    }
+}
+
+// 矩形
+class Rectangle extends Shape {
+    constructor(renderer, x, y, width, height) {
+        super(renderer);
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
+
+    draw() {
+        this.renderer.renderRectangle(this.x, this.y, this.width, this.height);
+    }
+}
+
+// 使用示例
+window.onload = function () {
+    const canvas = document.getElementById('canvas');
+    const svgContainer = document.getElementById('svg-container');
+
+    const canvasRenderer = new CanvasRenderer(canvas);
+    const svgRenderer = new SVGRenderer(svgContainer);
+
+    // 在 Canvas 上画
+    new Circle(canvasRenderer, 80, 80, 40).draw();
+    new Rectangle(canvasRenderer, 150, 30, 100, 80).draw();
+
+    // 在 SVG 上画
+    new Circle(svgRenderer, 80, 80, 40).draw();
+    new Rectangle(svgRenderer, 150, 30, 100, 80).draw();
+};
+</script>
+</body>
+</html>

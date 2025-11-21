@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <!-- 一个目标接口，一个被适配者，一个电源适配器（继承目标接口）
+        电源适配器负责把不兼容接口“桥接”起来，让客户端无需修改即可使用。重写方法 -->
+</body>
+<script>
+    // ⚡️ 目标接口：中国标准插座（期望的接口）
+    class ChinaSocket {
+        supply() {
+        return "220V 交流电";
+        }
+    }
+  
+    // ⚡️ 被适配者：美国电源（需要适配的类）
+    class USPlug {
+        specificRequest() {
+        return "110V 直流电";
+        }
+    }
+  
+    // 🔌 电源适配器（将美标转换为中标）
+    class PowerAdapter extends ChinaSocket {
+        constructor(usPlug) {
+        super();
+        this.usPlug = usPlug; // 持有被适配对象
+        }
+  
+        // 重写供电方法（核心适配逻辑）
+        supply() {
+            //直接用自己对象的方法
+            const originPower = this.usPlug.specificRequest();
+            // 电压转换逻辑
+            return originPower
+                .replace("110V", "220V")
+                .replace("直流电", "交流电");
+        }
+    }
+  
+    /****************** 使用示例 ******************/
+    // 中国电器（直接使用目标接口）
+    const chineseDevice = new ChinaSocket();
+    console.log("中国插座供电:", chineseDevice.supply());
+    
+    // 美国电器（需要适配）
+    const usDevice = new USPlug();
+    
+    // 通过适配器使用
+    const adapter = new PowerAdapter(usDevice);
+    console.log("通过适配器供电:", adapter.supply());
+    
+    /* 输出：
+    中国插座供电: 220V 交流电
+    通过适配器供电: 220V 交流电
+    */
+</script>
+</html>
