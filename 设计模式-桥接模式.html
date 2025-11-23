@@ -18,6 +18,7 @@
 // 它们被“桥接”了。
 
 // 渲染器接口
+// 两个方法
 class Renderer {
     renderCircle(x, y, radius) {
         throw new Error("renderCircle() must be implemented");
@@ -28,6 +29,7 @@ class Renderer {
 }
 
 // Canvas渲染器
+// 靠ctx来画
 class CanvasRenderer extends Renderer {
     constructor(canvas) {
         super();
@@ -39,6 +41,8 @@ class CanvasRenderer extends Renderer {
     //圆心坐标和半径
     renderCircle(x, y, radius) {
         this.ctx.beginPath();   //开始一条路径
+        //startAngle：开始角度,0 代表从右侧开始（3 点钟方向）
+        // 画到哪里结束。Math.PI * 2 就是 2π 弧度 = 360°.表示绕一圈，完整的圆。
         this.ctx.arc(x, y, radius, 0, Math.PI * 2); //画圆
         this.ctx.stroke();  //描边
     }
@@ -51,6 +55,7 @@ class CanvasRenderer extends Renderer {
 
 // SVG渲染器
 //SVG 是实际的 HTML 元素，可以选中、能修改、能响应事件
+// 靠container，进行dom操作，要设置命名空间，然后把元素append到container里
 class SVGRenderer extends Renderer {
     constructor(container) {
         super();
@@ -95,6 +100,7 @@ class SVGRenderer extends Renderer {
 
 // 图像抽象，是负责是什么形状，不负责怎么画
 // 抽象 Shape
+// renderer，规定一个要实现的draw()
 class Shape {
     constructor(renderer) {
         this.renderer = renderer;
@@ -117,6 +123,7 @@ class Circle extends Shape {
     }
 
     draw() {
+        // 把自己的属性传入选择的renderer
         this.renderer.renderCircle(this.x, this.y, this.radius);
     }
 }

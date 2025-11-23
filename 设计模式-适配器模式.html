@@ -7,28 +7,29 @@
 </head>
 <body>
     <!-- 一个目标接口，一个被适配者，一个电源适配器（继承目标接口）
-        电源适配器负责把不兼容接口“桥接”起来，让客户端无需修改即可使用。重写方法 -->
+        电源适配器负责把不兼容接口“桥接”起来，让客户端无需修改即可使用。重写目标接口的方法
+         -->
 </body>
 <script>
     // ⚡️ 目标接口：中国标准插座（期望的接口）
     class ChinaSocket {
         supply() {
-        return "220V 交流电";
+            return "220V 交流电";
         }
     }
   
     // ⚡️ 被适配者：美国电源（需要适配的类）
     class USPlug {
         specificRequest() {
-        return "110V 直流电";
+            return "110V 直流电";
         }
     }
   
     // 🔌 电源适配器（将美标转换为中标）
     class PowerAdapter extends ChinaSocket {
         constructor(usPlug) {
-        super();
-        this.usPlug = usPlug; // 持有被适配对象
+            super();
+            this.usPlug = usPlug; // 持有被适配对象
         }
   
         // 重写供电方法（核心适配逻辑）

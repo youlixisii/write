@@ -6,7 +6,9 @@
     <title>Document</title>
 </head>
 <body>
-    
+    <!-- 三个类，DataProcessor、CSVProcessor、JSONProcessor
+     DataProcessor定义流程
+      -->
 </body>
 <script>
     // 抽象数据处理器
@@ -46,6 +48,7 @@
 
         // 基础操作：数据保存
         saveData(data) {
+            //把 data 转成字符串后，只显示前 50 个字符
             console.log(`保存数据: ${JSON.stringify(data).slice(0, 50)}...`);
             return { success: true, data };
         }
@@ -66,34 +69,47 @@
     class CSVProcessor extends DataProcessor {
         cleanData(data) {
             console.log('CSVProcessor: 清洗CSV数据 - 移除空行和特殊字符');
-            //filter → 过滤空行
-            // trim → 去掉空格
-            // replace(/[^\w\s,]/g, '') → 去掉特殊字符（正则）
-            return data.filter(row => row && row.trim().length > 0)
+            //filter —— 过滤掉空行或无内容的行
+            //row.trim()：把字符串两端的空白去掉
+            //map —— 清洗每一行的非法字符，全部删除
+            //\w：字母数字下划线，\s：空白字符（空格、换行、tab）
+            //^ 取反，匹配所有不是字母、数字、下划线、空格、逗号的字符
+            return data
+                    .filter(row => row && row.trim().length > 0)
                     .map(row => row.replace(/[^\w\s,]/g, ''));
         }
 
         transformData(data) {
             console.log('CSVProcessor: 转换数据为对象数组');
-            // split(',') → CSV拆分
-            // slice(1) → 去掉表头
-            // reduce → 把数组转成对象
-            const headers = data[0].split(',');
-            return data.slice(1).map(row => {
-                const values = row.split(',');
-                return headers.reduce((obj, header, index) => {
-                    obj[header.trim()] = values[index] ? values[index].trim() : '';
-                    return obj;
-                }, {});
-            });
+            
+            const headers = data[0].split(','); // 表头数组
+            
+            return data
+                .slice(1) // 去掉第一行（表头）
+                //map：把“每一行”转换成“一个对象”，row 是 "sy,20" 这种字符串
+                .map(row => { // 遍历每一数据行
+                    const values = row.split(','); // 每行拆成数组
+                    //例如 "sy,20" 变成：
+                    // ["sy", "20"]
+                    //reduce 是遍历 headers 数组，一项项给 obj 添加字段
+                    // obj: 正在构建的对象（累积器）
+                    // header: 当前字段名
+                    // index: 当前下标，用来取 values[index]
+                    // {}：初始化为空对象
+                    return headers.reduce((obj, header, index) => {
+                        obj[header.trim()] = values[index] ? values[index].trim() : '';
+                        return obj;  // 返回构建中的对象
+                    }, {});
+                });
         }
 
         // 重写钩子方法
         //保存前检查数据结构是否合法
         hookBeforeSave(data) {
             console.log('CSVProcessor: 验证转换后的数据结构');
+            //如果 data 数组不是空的，但 data[0] 却是空对象 → 抛出错误
             if (data.length > 0 && !Object.keys(data[0]).length) {
-            throw new Error('数据结构转换失败');
+                throw new Error('数据结构转换失败');
             }
         }
     }
@@ -106,29 +122,47 @@
                 return JSON.parse(data); //将 JSON 字符串解析成对象
             } catch (error) {
                 // 尝试修复常见的JSON格式问题
+                //key冒号不规范，匹配key，替换成"key"形式
+                //匹配 ' 或 " 之一， ? 表示“可以有，也可以没有”
+                //+ 表示一个或多个
+                //g = global，表示“匹配所有”，不是只匹配第一个
+                //$2 就是“正则里第二个捕获组”，它对应 原始 key 的名字
                 const fixedData = data.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2":')
-                                      .replace(/'/g, '"');
+                                      .replace(/'/g, '"'); //把单引号换成双引号
                 return JSON.parse(fixedData);
             }
         }
 
         //扁平化对象（flatten）
+        //把一个 嵌套对象转化成扁平对象（点路径）
+        //这叫 对象扁平化（flatten）。
+        // 通常在解析 JSON、导表、生成 CSV时会用。
         transformData(data) {
             console.log('JSONProcessor: 扁平化嵌套结构');
+            //一个扁平化处理函数，接收两个参数，obj和prefix，立刻return一个reduce操作
+            //prefix 记录“当前递归层级的前缀”
             const flattenObject = (obj, prefix = '') => {
-            return Object.keys(obj).reduce((acc, key) => {
-                //遍历嵌套对象，把嵌套结构变成“点式路径”
-                const pre = prefix.length ? `${prefix}.` : '';
-                if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
-                    //Object.assign() 合并对象
-                    Object.assign(acc, flattenObject(obj[key], pre + key));
-                } else {
-                    acc[pre + key] = obj[key];
-                }
-                return acc;
-            }, {});
+                return Object.keys(obj).reduce((acc, key) => {
+                    //遍历嵌套对象，把嵌套结构变成“点式路径”
+                    //如果 prefix 不为空 → 加一个点（拼接）；否则 → 不加
+                    const pre = prefix.length ? `${prefix}.` : '';
+                    //判断是否是“嵌套对象”
+                    //obj[key] = 当前 key 的值
+                    // 如果它是对象（不是数组不是null） → 递归 flatten
+                    // 如果它是普通值 → 放到结果对象里
+                    if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
+                        //Object.assign() 合并对象
+                        //递归调用 flattenObject，把子对象展开后的结果 拷贝合并 到 acc 中。
+                        Object.assign(acc, flattenObject(obj[key], pre + key));
+                    } else {
+                        //否则：它是普通值
+                        acc[pre + key] = obj[key];
+                    }
+                    return acc;
+                }, {});
             };
-
+            //如果 data 是数组 → 每一项都 flatten
+            // ✔ 如果 data 不是数组 → 也包装成一个数组返回
             return Array.isArray(data) ? data.map(flattenObject) : [flattenObject(data)];
         }
 

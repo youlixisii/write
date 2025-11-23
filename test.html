@@ -9,39 +9,116 @@
     
 </body>
 <script>
-    class ChinaSocket{
-        supply(){
-            return "220V 交流电"
+    //模板方法模式
+
+    class DataProcessor{
+        process(data){
+            this.validateData(data)
+            const cleanedData=this.cleanData(data)
+            const transformedData=this.transformData(cleanedData)
+            this.hookBeforeSave(transformedData)
+            const result=this.saveData(transformedData)
+            this.hookAfterSave(result)
+
+            return result
+        }
+
+        validateData(data){
+            if(!data.length){
+                throw new Error('数据检验失败！')
+                
+            }
+            console.log('通过数据检验');
+
+        }
+
+        cleanData(data){
+            throw new Error('请具体实现！')
+
+        }
+
+        transformData(data){
+            throw new Error('请具体实现！')
+
+        }
+
+        saveData(data){
+            console.log(`保存数据：${JSON.stringify(data).slice(0,50)}...`);
+            return {success:true,data} 
+        }
+
+        hookBeforeSave(data){
+
+        }
+
+        hookAfterSave(result){
+
         }
     }
 
-    class USPlug{
-        specialRequest(){
-            return "110V 直流电"
+    class CSVProcessor extends DataProcessor{
+        
+        cleanData(data){
+            console.log('CSV数据清洗开始');
+            return data.filter(row=>row&&row.trim().length>0)
+                        .map(row=>row.replace(/[^\w\s,]/g,''))
+        }
+
+        transformData(data){
+
+            const headers=data[0].split(',')
+
+            return data.slice(1).map(row=>{
+                const values=row.split(',')
+
+                return headers.reduce((obj,header,index)=>{
+                    obj[header.trim()]=values[index] ? values[index].trim() : ''
+                    return obj
+                },{})
+            })
+
+        }
+
+        hookBeforeSave(data){
+            if(data.length>0 && !Object.keys(data[0]).length){
+                throw new Error('csv数据处理无效！')
+            }
+        }
+        
+    }
+    class JSONProcessor extends DataProcessor{
+        cleanData(data){
+            console.log("JSON数据清洗开始");
+            try {
+                JSON.parse(data)
+            } catch (error) {
+                const fixedData=data.replace(/(["'])?([a-zA-Z0-9_]+)()?:/g,'"$2":')
+                                    .replace(/'/g,'"')
+                return JSON.parse(fixedData)
+            }
+        }
+
+        transformData(data){
+            console.log("JSON数据转换开始");
+            
+
+            const flattenObject=(obj,prefix='')=>{
+                return Object.keys(obj).reduce((acc,key)=>{
+
+                    const pre=prefix.length?`${prefix}.`:''
+
+                    if(typeof obj[key] ==='object' && obj[key] !==null && !Array.isArray(obj[key])){
+
+                    }else{
+                        
+                    }
+                    return acc
+                },{})
+            }
+
+            return Array.isArray(data)?data.map(flattenObject):[flattenObject(data)]
+            
         }
     }
-
-    class PowerAdapter extends ChinaSocket{
-        constructor(usPlug){
-            super()
-            this.usPlug=usPlug
-        }
-
-        supply(){
-            const originPower=this.usPlug.specialRequest()
-            return originPower.replace("110V","220V").replace("直流电","交流电")
-        }
-    }
-
-    const chineseDevice=new ChinaSocket()
-    console.log(chineseDevice.supply());
-
-    const usDevice=new USPlug()
-
-    const adapter=new PowerAdapter(usDevice)
-    
-    console.log(adapter.supply());
-    
-    
 </script>
 </html>
