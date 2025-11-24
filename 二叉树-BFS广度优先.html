@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script>
+    function bfs(root) {
+        //如果根节点都没有，直接返回空数组。
+        if (!root) return [];
+        //队列（Queue） —— 先进先出（FIFO），queue 用来存放“等着被访问”的节点
+        //初始时我们把根节点放入 queue。
+        const queue = [root];
+        const res = []; //res 存放访问顺序结果
+
+        //循环：队列不为空就一直访问
+        while (queue.length > 0) {
+            //从队列头部取出一个节点
+            const node = queue.shift();
+            //把当前节点的值加入结果数组
+            res.push(node.val);
+
+            //把它的左右孩子加入队列
+            if (node.left) queue.push(node.left);
+            if (node.right) queue.push(node.right);
+        }
+
+        return res;
+    }
+
+    // ===== 构造复杂树 =====
+    class TreeNode {
+        constructor(val) {
+            this.val = val;
+            this.left = null;
+            this.right = null;
+        }
+    }
+
+    const root = new TreeNode(3);
+    root.left = new TreeNode(5);
+    root.right = new TreeNode(1);
+
+    root.left.left = new TreeNode(6);
+    root.left.right = new TreeNode(2);
+    root.right.left = new TreeNode(0);
+    root.right.right = new TreeNode(8);
+
+    root.left.right.left = new TreeNode(7);
+    root.left.right.right = new TreeNode(4);
+
+    console.log("【BFS 层序遍历结果】", bfs(root));
+    // 【BFS 层序遍历结果】 [ 3, 5, 1, 6, 2, 0, 8, 7, 4 ]
+
+
+</script>
+</html>
