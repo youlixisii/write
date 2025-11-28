@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script>
+    class Graph {
+      constructor() {
+        this.adjList = new Map();  // 存储图
+      }
+
+      // 添加节点
+      addNode(node) {
+        if (!this.adjList.has(node)) {
+          this.adjList.set(node, []);
+        }
+      }
+
+      // 添加边（默认无权图，weight = 1）
+      addEdge(from, to, weight = 1) {
+        this.addNode(from);
+        this.addNode(to);
+        this.adjList.get(from).push({ to, weight });
+      }
+
+      // 是否是无权图（即所有权重都为1）
+      isUnweighted() {
+        // 不要key，只要value
+        for (const [, neighbors] of this.adjList) {
+          for (const edge of neighbors) {
+            if (edge.weight !== 1) return false;
+          }
+        }
+        return true;
+      }
+
+      // 求最短路径（根据是否有权自动选择 BFS / Dijkstra）
+      shortestPath(start, end) {
+        return this.isUnweighted()
+          ? this.bfsShortestPath(start, end)
+          : this.dijkstra(start, end);
+      }
+
+      // BFS 求无权图最短路径
+      bfsShortestPath(start, end) {
+        const queue = [[start]];
+        const visited = new Set([start]); //防止重复走回头路，否则会无限循环
+
+        while (queue.length > 0) {
+          //每次从 queue 取出一个“路径”继续往外扩展
+          const path = queue.shift();
+          const node = path[path.length - 1];
+
+          //第一次找到 end 的路径就是边数最少的路径，也就是最短路径。
+          if (node === end) return path;
+
+          for (const neighbor of this.adjList.get(node)) {
+            if (!visited.has(neighbor.to)) {
+              visited.add(neighbor.to);
+              queue.push([...path, neighbor.to]);
+            }
+          }
+        }
+
+        return null; // 无路径
+      }
+
+      // Dijkstra 求有权图最短路径
+      dijkstra(start, end) {
+        const dist = new Map();
+        const prev = new Map();
+        const pq = [];
+
+        // 初始化
+        for (const node of this.adjList.keys()) {
+          dist.set(node, Infinity);
+          prev.set(node, null);
+        }
+        dist.set(start, 0);
+
+        pq.push({ node: start, dist: 0 });
+
+        while (pq.length) {
+          // 取出当前最短距离节点
+          pq.sort((a, b) => a.dist - b.dist);
+          const { node } = pq.shift();
+
+          if (node === end) break;
+
+          for (const edge of this.adjList.get(node)) {
+            const newDist = dist.get(node) + edge.weight;
+
+            if (newDist < dist.get(edge.to)) {
+              dist.set(edge.to, newDist);
+              prev.set(edge.to, node);
+              pq.push({ node: edge.to, dist: newDist });
+            }
+          }
+        }
+
+        // 回溯路径
+        const path = [];
+        let cur = end;
+        while (cur) {
+          path.unshift(cur);
+          cur = prev.get(cur);
+        }
+
+        return path.length ? path : null;
+      }
+    }
+
+    // 无权图 BFS
+    const graph = new Graph();
+
+    graph.addEdge('A', 'B');
+    graph.addEdge('A', 'C');
+    graph.addEdge('B', 'D');
+    graph.addEdge('C', 'D');
+    graph.addEdge('D', 'E');
+
+    console.log(graph.shortestPath('A', 'E'));
+    // 输出: [ 'A', 'B', 'D', 'E' ]
+
+
+    // 有权图 Dijkstra
+    const g = new Graph();
+
+    g.addEdge('A', 'B', 3);
+    g.addEdge('A', 'C', 1);
+    g.addEdge('C', 'B', 1);
+    g.addEdge('B', 'D', 2);
+
+    console.log(g.shortestPath('A', 'D'));
+    // 输出: [ 'A', 'C', 'B', 'D' ]
+
+</script>
+</html>
