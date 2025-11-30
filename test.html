@@ -9,14 +9,122 @@
     
 </body>
 <script>
-    function lowestCommonAncestor(root,p,q){
-        if(!root || root===p||root===q) return root
+    class Graph{
+        constructor(){
+            this.adjList=new Map()
+        }
 
-        const left=lowestCommonAncestor(root.left,p,q)
-        const right=lowestCommonAncestor(root.right,p,q)
+        addNode(node){
+            if(!this.adjList.has(node)){
+                this.adjList.set(node,[])
+            }
+        }
 
-        if(left&&right) return root
-        return left?left:right
+        addEdge(from,to,weight=1){
+            this.addNode(from)
+            this.addNode(to)
+            this.adjList.get(from).push({to,weight})
+        }
+
+        isUnweighted(){
+            for(const [,neighbors] of this.adjList){
+                for(const edge of neighbors){
+                    if(edge.weight!==1) return false
+                }
+            }
+            return true
+        }
+
+        shortestPath(start,end){
+            return this.isUnweighted()
+            ?this.bfsShortestPath(start,end)
+            :this.dijkstra(start,end)
+        }
+
+        bfsShortestPath(start,end){
+            const queue=[[start]]
+            const visited=new Set([start])
+
+            while(queue.length>0){
+                const path=queue.shift()
+                const node=path[path.length-1]
+
+                if(node===end) return path
+
+                for(const neighbor of this.adjList.get(node)){
+                    if(!visited.has(neighbor.to)){
+                        visited.add(neighbor.to)
+                        queue.push([...path,neighbor.to])
+                    }
+                }
+            }
+
+            return null
+        }
+
+        dijkstra(start,end){
+
+            const dist=new Map()
+            const prev=new Map()
+
+            const pq=[]
+
+            for(const node of this.adjList.keys()){
+                dist.set(node,Infinity)
+                prev.set(node,null)
+            }
+
+            dist.set(start,0)
+            pq.push({node:start,dist:0})
+
+            while(pq.length){
+                pq.sort((a,b)=>a.dist-b.dist)
+                const {node}=pq.shift()
+
+                for(const edge of this.adjList.get(node)){
+                    const newDist=dist.get(node)+edge.weight
+                    if(newDist<dist.get(edge.to)){
+                        dist.set(edge.to,newDist)
+                        prev.set(edge.to,node)
+                        pq.push({node:edge.to, dist:newDist})
+                    }
+                }
+            }
+
+            let cur=end
+            const path=[]
+            while(cur){
+                path.unshift(cur)
+                cur=prev.get(cur)
+            }
+
+            return path.length?path:null
+
+        }
     }
+
+    // 无权图 BFS
+    const graph = new Graph();
+
+    graph.addEdge('A', 'B');
+    graph.addEdge('A', 'C');
+    graph.addEdge('B', 'D');
+    graph.addEdge('C', 'D');
+    graph.addEdge('D', 'E');
+
+    console.log(graph.shortestPath('A', 'E'));
+    // 输出: [ 'A', 'B', 'D', 'E' ]
+
+
+    // 有权图 Dijkstra
+    const g = new Graph();
+
+    g.addEdge('A', 'B', 3);
+    g.addEdge('A', 'C', 1);
+    g.addEdge('C', 'B', 1);
+    g.addEdge('B', 'D', 2);
+
+    console.log(g.shortestPath('A', 'D'));
+    // 输出: [ 'A', 'C', 'B', 'D' ]
 </script>
 </html>

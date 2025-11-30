@@ -25,6 +25,7 @@
       addEdge(from, to, weight = 1) {
         this.addNode(from);
         this.addNode(to);
+        //往数组里加对象
         this.adjList.get(from).push({ to, weight });
       }
 
@@ -49,16 +50,19 @@
       // BFS 求无权图最短路径
       bfsShortestPath(start, end) {
         const queue = [[start]];
+        //走过节点的set，只储存节点名 {"A","C","D"}
         const visited = new Set([start]); //防止重复走回头路，否则会无限循环
 
         while (queue.length > 0) {
           //每次从 queue 取出一个“路径”继续往外扩展
+          //["A","C"]
           const path = queue.shift();
-          const node = path[path.length - 1];
+          const node = path[path.length - 1];//路径的最后一个节点
 
           //第一次找到 end 的路径就是边数最少的路径，也就是最短路径。
           if (node === end) return path;
 
+          //neighbor是一个对象，{to:"B", weight:1}
           for (const neighbor of this.adjList.get(node)) {
             if (!visited.has(neighbor.to)) {
               visited.add(neighbor.to);
@@ -72,30 +76,42 @@
 
       // Dijkstra 求有权图最短路径
       dijkstra(start, end) {
+        //起点到当前节点的最短距离
         const dist = new Map();
+        //每个节点在最短路径上的前驱
         const prev = new Map();
+        //把所有候选步骤按距离排序，永远拿最短的来走
         const pq = [];
 
         // 初始化
+        //遍历图中所有节点
         for (const node of this.adjList.keys()) {
           dist.set(node, Infinity);
           prev.set(node, null);
         }
+        //start 距离为 0，因为从它开始
         dist.set(start, 0);
 
+        //从 start 节点开始扩展所有路径
         pq.push({ node: start, dist: 0 });
+
 
         while (pq.length) {
           // 取出当前最短距离节点
+          // 让最短距离排前面
           pq.sort((a, b) => a.dist - b.dist);
           const { node } = pq.shift();
 
+          //明最短路径已确定，可以退出
           if (node === end) break;
 
+          //{ to: "B", weight: 3 }
           for (const edge of this.adjList.get(node)) {
+            //计算到邻居的潜在新距离
             const newDist = dist.get(node) + edge.weight;
 
             if (newDist < dist.get(edge.to)) {
+              //如果新距离比之前保存的更短，则更新：
               dist.set(edge.to, newDist);
               prev.set(edge.to, node);
               pq.push({ node: edge.to, dist: newDist });
@@ -104,15 +120,18 @@
         }
 
         // 回溯路径
+        //反向构造出最短路径
         const path = [];
-        let cur = end;
+        let cur = end; //注意这里要写let
         while (cur) {
           path.unshift(cur);
           cur = prev.get(cur);
         }
 
+
         return path.length ? path : null;
       }
+
     }
 
     // 无权图 BFS
