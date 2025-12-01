@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    
+</body>
+<script>
+    // ============================
+    // 时间切片调度器
+    // ============================
+    class TimeSlicedScheduler {
+        constructor() {
+            this.taskQueue = []; // 存放所有待执行任务的队列
+            this.isScheduled = false; // 是否已经安排过调度
+            this.currentDeadline = null; // 当前执行时间片的截止时间对象
+        }
+
+        // 添加任务到队列并根据优先级排序
+        scheduleTask(task, priority = 'normal') {
+            const taskWithPriority = {
+            task,
+            priority: this.getPriorityValue(priority), // 转换成数字优先级
+            id: Date.now() + Math.random() // 唯一标识任务
+            };
+
+            // 按优先级插入队列
+            this.insertTaskByPriority(taskWithPriority);
+
+            // 如果没有调度任务，则通过 requestIdleCallback 开始调度
+            if (!this.isScheduled) {
+            this.isScheduled = true;
+            requestIdleCallback(this.executeTasks.bind(this));
+            }
+
+            return taskWithPriority.id;
+        }
+
+        // 根据优先级插入任务到队列（高优先级靠前）
+        insertTaskByPriority(newTask) {
+            let inserted = false;
+            for (let i = 0; i < this.taskQueue.length; i++) {
+            if (newTask.priority > this.taskQueue[i].priority) {
+                this.taskQueue.splice(i, 0, newTask);
+                inserted = true;
+                break;
+            }
+            }
+            if (!inserted) {
+            this.taskQueue.push(newTask); // 如果是最低优先级，插到队尾
+            }
+        }
+
+        // 获取字符串优先级对应的数值（数字越大优先级越高）
+        getPriorityValue(priority) {
+            const priorities = {
+            'immediate': 4,
+            'user-blocking': 3,
+            'normal': 2,
+            'low': 1,
+            'idle': 0
+            };
+            return priorities[priority] || 2; // 默认 normal
+        }
+
+        // 执行队列中的任务
+        executeTasks(deadline) {
+            this.currentDeadline = deadline;
+
+            // 只要队列非空且时间片还有剩余，就执行任务
+            while (this.taskQueue.length > 0 && this.hasTimeRemaining()) {
+            const taskObj = this.taskQueue.shift(); // 取出队首任务
+
+            try {
+                // 执行任务函数，返回是否完成
+                const isCompleted = taskObj.task(deadline);
+
+                // 若任务未完成，则重新加入队列
+                if (!isCompleted) {
+                this.insertTaskByPriority(taskObj);
+                }
+            } catch (error) {
+                console.error('Task execution failed:', error);
+            }
+            }
+
+            // 队列还有剩余任务，继续调度；否则结束调度
+            if (this.taskQueue.length > 0) {
+            requestIdleCallback(this.executeTasks.bind(this));
+            } else {
+            this.isScheduled = false;
+            }
+        }
+
+        // 判断当前时间片是否还有剩余时间
+        hasTimeRemaining() {
+            return this.currentDeadline.timeRemaining() > 0 || 
+                this.currentDeadline.didTimeout;
+        }
+
+        // 取消指定任务
+        cancelTask(taskId) {
+            this.taskQueue = this.taskQueue.filter(task => task.id !== taskId);
+        }
+
+        // 获取当前任务队列状态
+        getQueueStatus() {
+            return {
+            total: this.taskQueue.length,
+            priorities: this.taskQueue.reduce((acc, task) => {
+                acc[task.priority] = (acc[task.priority] || 0) + 1;
+                return acc;
+            }, {})
+            };
+        }
+    }
+
+    // ============================
+    // 使用示例
+    // ============================
+    const scheduler = new TimeSlicedScheduler();
+
+    // 创建模拟长时间任务
+    function createLongTask(name, steps = 10, stepTime = 20) {
+    let currentStep = 0;
+
+    return function(deadline) {
+        console.log(`[${name}] 开始步骤 ${currentStep + 1}/${steps}`);
+
+        // 模拟工作负载（阻塞计算）
+        const startTime = performance.now();
+        while (performance.now() - startTime < stepTime) {
+        Math.sqrt(Math.random() * 1000000);
+        }
+
+        currentStep++;
+        console.log(`[${name}] 完成步骤 ${currentStep}/${steps}`);
+
+        // 返回任务是否完成
+        return currentStep >= steps;
+    };
+    }
+
+    // 创建不同优先级任务
+    const highPriorityTask = createLongTask('高优先级任务', 5, 30);
+    const normalPriorityTask = createLongTask('普通优先级任务', 8, 15);
+    const lowPriorityTask = createLongTask('低优先级任务', 6, 25);
+
+    // 调度任务
+    scheduler.scheduleTask(highPriorityTask, 'immediate');
+    scheduler.scheduleTask(normalPriorityTask, 'normal');
+    scheduler.scheduleTask(lowPriorityTask, 'low');
+
+    console.log('任务队列状态:', scheduler.getQueueStatus());
+
+    // ============================
+    // 模拟 React Fiber 风格的工作单元
+    // ============================
+    class WorkUnit {
+    constructor(work, expirationTime) {
+        this.work = work; // 当前工作函数
+        this.expirationTime = expirationTime; // 到期时间
+        this.next = null; // 下一个工作单元
+    }
+    }
+
+    // 高级时间切片调度器（类似 React Fiber）
+    class FiberScheduler {
+        constructor() {
+            this.scheduler = new TimeSlicedScheduler();
+            this.workInProgress = null; // 当前正在执行的工作单元
+            this.pendingCommit = null; // 待提交的工作
+        }
+
+        // 安排工作单元到调度器
+        scheduleWork(unit, priority = 'normal') {
+            return this.scheduler.scheduleTask(
+            (deadline) => this.performUnitOfWork(unit, deadline),
+            priority
+            );
+        }
+
+        // 执行工作单元
+        performUnitOfWork(unit, deadline) {
+            if (!unit) return true; // 没有工作单元，直接返回完成
+
+            this.workInProgress = unit;
+
+            // 执行工作直到时间片用完
+            while (this.workInProgress && this.hasTime(deadline)) {
+            this.workInProgress = this.workInProgress.work(deadline);
+            }
+
+            // 返回是否已完成全部工作
+            return this.workInProgress === null;
+        }
+
+        // 判断是否还有时间片可用
+        hasTime(deadline) {
+            return deadline.timeRemaining() > 0 || deadline.didTimeout;
+        }
+
+        // 将一系列工作函数创建成链表并安排执行
+        createWorkChain(works, priority = 'normal') {
+            if (works.length === 0) return null;
+
+            let head = new WorkUnit(works[0], Date.now());
+            let current = head;
+
+            for (let i = 1; i < works.length; i++) {
+            current.next = new WorkUnit(works[i], Date.now());
+            current = current.next;
+            }
+
+            // 调度第一个工作单元
+            this.scheduleWork(head, priority);
+
+            return head;
+        }
+    }
+
+    // ============================
+    // 使用 Fiber 调度器
+    // ============================
+    const fiberScheduler = new FiberScheduler();
+
+    // 创建工作链示例
+    const workChain = [
+        (deadline) => {
+            console.log('工作单元 1 执行中...');
+            const start = performance.now();
+            while (performance.now() - start < 15) {}
+            console.log('工作单元 1 完成');
+            return null; // 返回下一个工作单元，null 表示完成
+        },
+        (deadline) => {
+            console.log('工作单元 2 执行中...');
+            const start = performance.now();
+            while (performance.now() - start < 10) {}
+            console.log('工作单元 2 完成');
+            return null;
+        },
+        (deadline) => {
+            console.log('工作单元 3 执行中...');
+            const start = performance.now();
+            while (performance.now() - start < 20) {}
+            console.log('工作单元 3 完成');
+            return null;
+        }
+    ];
+
+    // 创建并调度工作链
+    fiberScheduler.createWorkChain(workChain, 'normal');
+
+    console.log('所有任务已安排，观察时间切片效果...');
+    
+</script>
+</html>
