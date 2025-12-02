@@ -14,72 +14,79 @@
     // ============================
     class TimeSlicedScheduler {
         constructor() {
-            this.taskQueue = []; // 存放所有待执行任务的队列
-            this.isScheduled = false; // 是否已经安排过调度
-            this.currentDeadline = null; // 当前执行时间片的截止时间对象
+            this.taskQueue = []; // 按优先级排序的任务队列
+            this.isScheduled = false; // 是否已经安排过一次调度
+            this.currentDeadline = null; // requestIdleCallback 提供的时间片对象
         }
 
         // 添加任务到队列并根据优先级排序
         scheduleTask(task, priority = 'normal') {
-            const taskWithPriority = {
-            task,
-            priority: this.getPriorityValue(priority), // 转换成数字优先级
-            id: Date.now() + Math.random() // 唯一标识任务
+            //包装任务，附带优先级和id
+            const taskObj  = {
+                task,       // 任务函数
+                priority: this.getPriorityValue(priority), // 转换成数字优先级
+                id: Date.now() + Math.random() // 唯一标识任务，用于取消任务
             };
 
             // 按优先级插入队列
-            this.insertTaskByPriority(taskWithPriority);
+            this.insertTaskByPriority(taskObj);
 
-            // 如果没有调度任务，则通过 requestIdleCallback 开始调度
+            // 如果调度器还没启动，就启动
             if (!this.isScheduled) {
-            this.isScheduled = true;
-            requestIdleCallback(this.executeTasks.bind(this));
+                //标记
+                this.isScheduled = true;
+                requestIdleCallback(this.executeTasks.bind(this));
             }
 
-            return taskWithPriority.id;
+            return taskObj.id;
         }
 
         // 根据优先级插入任务到队列（高优先级靠前）
         insertTaskByPriority(newTask) {
             let inserted = false;
+            //遍历任务队列，找到优先级比它低的位置
             for (let i = 0; i < this.taskQueue.length; i++) {
-            if (newTask.priority > this.taskQueue[i].priority) {
-                this.taskQueue.splice(i, 0, newTask);
-                inserted = true;
-                break;
-            }
+                // 新任务优先级高，就插到前面
+                if (newTask.priority > this.taskQueue[i].priority) {
+                    this.taskQueue.splice(i, 0, newTask);
+                    inserted = true;
+                    break;
+                }
             }
             if (!inserted) {
+                // 否则放队尾（优先级最低）
             this.taskQueue.push(newTask); // 如果是最低优先级，插到队尾
             }
         }
 
-        // 获取字符串优先级对应的数值（数字越大优先级越高）
+        // 将文字优先级转数字，越大越紧急
         getPriorityValue(priority) {
             const priorities = {
-            'immediate': 4,
-            'user-blocking': 3,
-            'normal': 2,
-            'low': 1,
-            'idle': 0
+                'immediate': 4,
+                'user-blocking': 3,
+                'normal': 2,
+                'low': 1,
+                'idle': 0
             };
             return priorities[priority] || 2; // 默认 normal
         }
 
-        // 执行队列中的任务
+        // 执行任务：在浏览器空闲时间里运行
+        //调度器的核心，会被requestIdleCallback调用
+        //记录deadline，while，取出任务，执行任务，下次调度
         executeTasks(deadline) {
             this.currentDeadline = deadline;
 
-            // 只要队列非空且时间片还有剩余，就执行任务
+            // 只要队列非空，且时间片还有剩余，就执行任务
             while (this.taskQueue.length > 0 && this.hasTimeRemaining()) {
-            const taskObj = this.taskQueue.shift(); // 取出队首任务
+            const taskObj = this.taskQueue.shift(); // 取出最高优先级任务
 
             try {
                 // 执行任务函数，返回是否完成
-                const isCompleted = taskObj.task(deadline);
+                const done = taskObj.task(deadline);
 
                 // 若任务未完成，则重新加入队列
-                if (!isCompleted) {
+                if (!done) {
                 this.insertTaskByPriority(taskObj);
                 }
             } catch (error) {
@@ -87,11 +94,12 @@
             }
             }
 
-            // 队列还有剩余任务，继续调度；否则结束调度
+            // 如果还有任务，安排下一次 idle 调度
             if (this.taskQueue.length > 0) {
-            requestIdleCallback(this.executeTasks.bind(this));
+                requestIdleCallback(this.executeTasks.bind(this));
             } else {
-            this.isScheduled = false;
+                //队列空了，调度器休息
+                this.isScheduled = false;
             }
         }
 
@@ -107,9 +115,11 @@
         }
 
         // 获取当前任务队列状态
+        //{total,priorities}
         getQueueStatus() {
             return {
             total: this.taskQueue.length,
+            //统计遇到priority为x时出现的次数
             priorities: this.taskQueue.reduce((acc, task) => {
                 acc[task.priority] = (acc[task.priority] || 0) + 1;
                 return acc;
@@ -125,23 +135,23 @@
 
     // 创建模拟长时间任务
     function createLongTask(name, steps = 10, stepTime = 20) {
-    let currentStep = 0;
+        let currentStep = 0;
 
-    return function(deadline) {
-        console.log(`[${name}] 开始步骤 ${currentStep + 1}/${steps}`);
+        return function(deadline) {
+            console.log(`[${name}] 开始步骤 ${currentStep + 1}/${steps}`);
 
-        // 模拟工作负载（阻塞计算）
-        const startTime = performance.now();
-        while (performance.now() - startTime < stepTime) {
-        Math.sqrt(Math.random() * 1000000);
-        }
+            // 模拟工作负载（阻塞计算）
+            const startTime = performance.now();
+            while (performance.now() - startTime < stepTime) {
+                Math.sqrt(Math.random() * 1000000);
+            }
 
-        currentStep++;
-        console.log(`[${name}] 完成步骤 ${currentStep}/${steps}`);
+            currentStep++;
+            console.log(`[${name}] 完成步骤 ${currentStep}/${steps}`);
 
-        // 返回任务是否完成
-        return currentStep >= steps;
-    };
+            // 返回任务是否完成
+            return currentStep >= steps;
+        };
     }
 
     // 创建不同优先级任务
@@ -159,12 +169,14 @@
     // ============================
     // 模拟 React Fiber 风格的工作单元
     // ============================
+
+    //一个单向链表节点，每个节点是一个“工作单元”。
     class WorkUnit {
-    constructor(work, expirationTime) {
-        this.work = work; // 当前工作函数
-        this.expirationTime = expirationTime; // 到期时间
-        this.next = null; // 下一个工作单元
-    }
+        constructor(work, expirationTime) {
+            this.work = work; // 当前工作函数
+            this.expirationTime = expirationTime; // 到期时间
+            this.next = null; // 下一个工作单元
+        }
     }
 
     // 高级时间切片调度器（类似 React Fiber）
@@ -184,6 +196,10 @@
         }
 
         // 执行工作单元
+        // 记录当前 workUnit
+        // 在空闲时间内 while 循环执行 workUnit.work()
+        // workUnit.work() 执行完会返回 “下一个工作单元”
+        // 如果下一个是 null → 整个链条结束 → 返回 true
         performUnitOfWork(unit, deadline) {
             if (!unit) return true; // 没有工作单元，直接返回完成
 
@@ -199,6 +215,8 @@
         }
 
         // 判断是否还有时间片可用
+        //有剩余时间 → 继续下一个工作
+        // 时间用完 → 下一帧再继续
         hasTime(deadline) {
             return deadline.timeRemaining() > 0 || deadline.didTimeout;
         }
