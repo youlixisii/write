@@ -190,8 +190,8 @@
         // 安排工作单元到调度器
         scheduleWork(unit, priority = 'normal') {
             return this.scheduler.scheduleTask(
-            (deadline) => this.performUnitOfWork(unit, deadline),
-            priority
+                (deadline) => this.performUnitOfWork(unit, deadline),
+                priority
             );
         }
 
@@ -207,7 +207,7 @@
 
             // 执行工作直到时间片用完
             while (this.workInProgress && this.hasTime(deadline)) {
-            this.workInProgress = this.workInProgress.work(deadline);
+                this.workInProgress = this.workInProgress.work(deadline);
             }
 
             // 返回是否已完成全部工作
@@ -229,8 +229,8 @@
             let current = head;
 
             for (let i = 1; i < works.length; i++) {
-            current.next = new WorkUnit(works[i], Date.now());
-            current = current.next;
+                current.next = new WorkUnit(works[i], Date.now());
+                current = current.next;
             }
 
             // 调度第一个工作单元

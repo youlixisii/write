@@ -10,38 +10,128 @@
 </body>
 <script>
     class TimeSlicedScheduler{
-        constructor(){
+        constructor() {
             this.taskQueue=[]
             this.isScheduled=false
             this.currentDeadline=null
         }
 
         scheduleTask(task,priority='normal'){
-            
+            const taskObj={
+                task,
+                priority:this.getPriorityValue(priority),
+                id:Date.now()+Math.random()
+            }
 
+            this.insertTaskByPriority(taskObj)
+
+            if(!this.isScheduled){
+                this.isScheduled=true
+                requestIdleCallback(this.executeTasks.bind(this))
+            }
+
+            return taskObj.id
         }
 
         insertTaskByPriority(newTask){
-
+            let inserted=false
+            for(let i=0;i<this.taskQueue.length;i++){
+                if(newTask.priority>this.taskQueue[i].priority){
+                    inserted=true
+                    this.taskQueue.splice(i,0,newTask)
+                    break
+                }
+            }
+            if(!inserted){
+                this.taskQueue.push(newTask)
+            }
         }
 
         getPriorityValue(priority){
-
+            const priorities={
+                'immediate':4,
+                'user-blocking':3,
+                'normal':2,
+                'low':1,
+                'idle':0
+            }
+            return priorities[priority]||2
         }
 
         executeTasks(deadline){
+            this.currentDeadline=deadline
 
+            while(this.taskQueue.length>0 && this.hasTimeRemaining()){
+                const taskObj=this.taskQueue.shift()
+
+                try {
+                    const done=taskObj.task(deadline)
+
+                    if(!done){
+                        this.insertTaskByPriority(taskObj)
+
+                    }
+                } catch (error) {
+                    
+                }
+            }
+
+            if(this.taskQueue.length>0){
+                requestIdleCallback(this.executeTasks.bind(this))
+            }else{
+                this.isScheduled=false
+            }
         }
 
         hasTimeRemaining(){
-
+            return this.currentDeadline.timeRemaining()>0||
+                this.currentDeadline.didTimeout
         }
 
         cancelTask(taskId){
-
+            this.taskQueue=this.taskQueue.filter(task=>task.id!==taskId)
         }
 
         getQueueStatus(){
+            return {
+                total:this.taskQueue.length,
+                priorities:this.taskQueue.reduce((acc,task)=>{
+                    acc[task.priority]=(acc[task.priority]||0)+1
+                    return acc
+                },{})
+            }
+        }
+    }
+
+    const scheduler=new TimeSlicedScheduler()
+
+    function createLongTask(name,steps,stepTime){
+        let currentSteps=0
+        return function(deadline){
+            console.log(`[${name}] ${currentSteps+1}/${steps}`);
+            
+            const startTime=performance.now()
+            while(performance.now()-startTime<stepTime){
+                Math.sqrt(Math.random*100000)
+            }
+            
+            currentSteps++
+            console.log(`[${name}] ${currentSteps}/${steps}`);
+            return currentSteps>=steps
+        }
+    }
+
+    
+    class WorkUnit{
+        constructor(work,expirationTime){
+            this.work=work
+            this.expirationTime=expirationTime
+            this.next=null
+        }
+    }
+
+    class FiberScheduler{
+        constructor(){
             
         }
     }
